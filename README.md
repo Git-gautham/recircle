@@ -65,22 +65,12 @@ recircle/
 - **Change menu links:** `js/ui.js` → `NAV_LINKS`
 - **Change demo listings / map centre / CO₂ factors:** `js/data.js`, then click **Reset demo data** in the footer.
 
-## Deploy free on GitHub Pages (for the submission link)
+## Published links
 
-1. Create a new public repo on GitHub, e.g. `recircle`.
-2. In VS Code terminal, inside the folder:
-   ```bash
-   git init
-   git add .
-   git commit -m "ReCircle - TERRACODE 2026"
-   git branch -M main
-   git remote add origin https://github.com/<your-username>/recircle.git
-   git push -u origin main
-   ```
-3. On GitHub: **Settings → Pages → Source: Deploy from a branch → main / (root) → Save**.
-4. After a minute your site is live at `https://<your-username>.github.io/recircle/`.
+- **GitHub repository:** <https://github.com/Git-gautham/recircle>
+- **Live GitHub Pages site:** <https://git-gautham.github.io/recircle/>
 
-Submit both the **GitHub repo link** and the **Pages link**.
+GitHub Pages is configured to deploy the `main` branch from the repository root.
 
 ## Notes on the demo
 
