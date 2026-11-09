@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ReCircle — Waste Exchange Platform</title>
+  <meta name="description" content="ReCircle is a circular-economy marketplace where waste from one person becomes a resource for someone else nearby.">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<main>
+
+  <!-- ===== Hero ===== -->
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div>
+        <span class="eyebrow">Circular economy marketplace</span>
+        <h1>One person's waste is <em>another's raw material.</em></h1>
+        <p class="lede">List what you'd throw away. Find what you need nearby. ReCircle connects households, shops, students and recyclers so materials keep moving instead of piling up.</p>
+        <div class="hero-actions">
+          <a class="btn primary" href="post.html">＋ List your waste</a>
+          <a class="btn" href="marketplace.html">Explore nearby</a>
+        </div>
+        <div class="hero-stats" id="heroStats"></div>
+      </div>
+
+      <div class="hero-art">
+        <svg class="loop-art" viewBox="0 0 400 400" role="img" aria-label="A circle connecting a restaurant, a student, a home and a recycler">
+          <g class="spin">
+            <circle cx="200" cy="200" r="140" fill="none" stroke="var(--line)" stroke-width="2" stroke-dasharray="4 10"/>
+          </g>
+          <circle cx="200" cy="200" r="140" fill="none" stroke="var(--brand-2)" stroke-width="3" stroke-dasharray="70 150" stroke-linecap="round" opacity=".6">
+            <animateTransform attributeName="transform" type="rotate" from="0 200 200" to="360 200 200" dur="14s" repeatCount="indefinite"/>
+          </circle>
+          <circle cx="200" cy="200" r="78" fill="var(--brand)"/>
+          <text x="200" y="192" text-anchor="middle" font-family="Fraunces, serif" font-style="italic" font-size="22" fill="var(--on-brand)">waste</text>
+          <text x="200" y="220" text-anchor="middle" font-family="DM Sans, sans-serif" font-size="13" fill="var(--on-brand)" opacity=".75">becomes</text>
+          <text x="200" y="244" text-anchor="middle" font-family="Fraunces, serif" font-style="italic" font-size="22" fill="var(--on-brand)">resource</text>
+
+          <g class="node"><circle cx="200" cy="60" r="34" fill="var(--surface)" stroke="var(--line)" stroke-width="2"/><text x="200" y="71" text-anchor="middle" font-size="30">🍽️</text></g>
+          <g class="node"><circle cx="340" cy="200" r="34" fill="var(--surface)" stroke="var(--line)" stroke-width="2"/><text x="340" y="211" text-anchor="middle" font-size="30">🎓</text></g>
+          <g class="node"><circle cx="200" cy="340" r="34" fill="var(--surface)" stroke="var(--line)" stroke-width="2"/><text x="200" y="351" text-anchor="middle" font-size="30">🏠</text></g>
+          <g class="node"><circle cx="60" cy="200" r="34" fill="var(--surface)" stroke="var(--line)" stroke-width="2"/><text x="60" y="211" text-anchor="middle" font-size="30">♻️</text></g>
+        </svg>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== How it works ===== -->
+  <section class="section" style="padding-top:24px">
+    <div class="wrap">
+      <span class="eyebrow">How it works</span>
+      <h2 style="margin-bottom:24px">Close the loop in four steps</h2>
+      <div class="steps">
+        <div class="card step"><div class="ico">📸</div><h3>List it</h3><p>A restaurant posts leftover cardboard. A home lists old electronics. Takes under a minute.</p></div>
+        <div class="card step"><div class="ico">📍</div><h3>Discover nearby</h3><p>Search by category and distance on the map. Post a "Wanted" request if you can't find it.</p></div>
+        <div class="card step"><div class="ico">💬</div><h3>Chat &amp; agree</h3><p>Message the other person, fix a pickup time and price — or keep it free.</p></div>
+        <div class="card step"><div class="ico">🌱</div><h3>Track impact</h3><p>Mark it exchanged. Every kilo kept from landfill adds to your impact dashboard.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Categories ===== -->
+  <section class="section" style="padding-top:0">
+    <div class="wrap">
+      <div class="section-head">
+        <div><span class="eyebrow">Browse by material</span><h2>What's circulating</h2></div>
+      </div>
+      <div class="cat-strip" id="catStrip"></div>
+    </div>
+  </section>
+
+  <!-- ===== Recent listings ===== -->
+  <section class="section" style="padding-top:0">
+    <div class="wrap">
+      <div class="section-head">
+        <div><span class="eyebrow">Fresh near you</span><h2>Latest listings</h2></div>
+        <a class="btn ghost" href="marketplace.html">See all →</a>
+      </div>
+      <div class="grid" id="recentGrid"></div>
+    </div>
+  </section>
+
+  <!-- ===== Mission band ===== -->
+  <section class="section" style="padding-top:0">
+    <div class="wrap">
+      <div class="band">
+        <div>
+          <span class="eyebrow" style="color:var(--gold)">Why ReCircle</span>
+          <h2>Most "waste" is just a material in the wrong place.</h2>
+          <p>Cardboard from a kitchen can become a student's model. Fabric offcuts can become cloth bags. Coconut husk can become coir. ReCircle makes these hand-offs easy, local and visible.</p>
+          <div class="hero-actions" style="margin-bottom:0">
+            <a class="btn primary" href="impact.html">See community impact</a>
+            <a class="btn" href="post.html">Post a "Wanted" request</a>
+          </div>
+        </div>
+        <blockquote class="band-quote" id="bandQuote"></blockquote>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script src="js/data.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/detail.js"></script>
+<script src="js/home.js"></script>
+</body>
+</html>

@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Recycling impact — ReCircle</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<main class="wrap">
+  <div class="page-head">
+    <span class="eyebrow">Recycling impact dashboard</span>
+    <h1>What the loop has saved</h1>
+    <p>Every exchange keeps material in use and out of landfill. Here's the running total.</p>
+  </div>
+
+  <div class="seg scope" id="scopeSeg" role="group" aria-label="Whose impact">
+    <button data-scope="all" class="on">Community</button>
+    <button data-scope="me">My impact</button>
+  </div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="dash-grid">
+    <div class="card">
+      <h3>Material diverted per month</h3>
+      <p class="muted small">Kilograms exchanged, last 6 months</p>
+      <div class="chart-box"><canvas id="monthChart" aria-label="Bar chart of kilograms exchanged per month"></canvas></div>
+    </div>
+    <div class="card">
+      <h3>By material</h3>
+      <p class="muted small">Share of total weight</p>
+      <div class="chart-box"><canvas id="catChart" aria-label="Doughnut chart of weight by material"></canvas></div>
+    </div>
+    <div class="card">
+      <h3>That's roughly the same as…</h3>
+      <div class="equiv" id="equiv"></div>
+    </div>
+    <div class="card">
+      <h3>Top circular contributors</h3>
+      <p class="muted small">Ranked by kilograms given</p>
+      <ol class="leaders" id="leaders"></ol>
+    </div>
+  </div>
+
+  <p class="footnote">
+    CO₂e figures are indicative estimates: weight × a per-material factor (set in <code>js/data.js</code>).
+    Equivalents use common rule-of-thumb values — ~21 kg CO₂ absorbed per tree per year, ~0.17 kg CO₂ per km in a petrol car,
+    and ~0.008 kg CO₂ per smartphone charge.
+  </p>
+</main>
+
+<script src="vendor/chartjs/chart.umd.min.js"></script>
+<script src="js/data.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/impact.js"></script>
+</body>
+</html>

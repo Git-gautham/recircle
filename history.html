@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Exchange history — ReCircle</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<main class="wrap">
+  <div class="page-head">
+    <span class="eyebrow">Exchange history</span>
+    <h1>Every hand-off, on record</h1>
+    <p>A transparent log of materials that found a new home — yours and the whole community's.</p>
+  </div>
+
+  <div class="card toolbar">
+    <div class="seg" id="scopeSeg" role="group" aria-label="Whose history">
+      <button data-scope="all" class="on">Community</button>
+      <button data-scope="me">Mine</button>
+    </div>
+    <select id="catFilter" aria-label="Category" style="width:auto"></select>
+    <span class="muted small" id="summary" style="margin-left:auto"></span>
+    <button class="btn ghost sm" id="csvBtn">⬇ Export CSV</button>
+  </div>
+
+  <ol class="timeline" id="timeline"></ol>
+
+  <div class="card" style="padding:24px;margin-top:28px">
+    <h2 style="font-size:1.4rem">Your listings</h2>
+    <p class="muted small">Things you've posted. Click one to change its status or delete it.</p>
+    <div class="grid" id="myListings"></div>
+  </div>
+</main>
+
+<script src="js/data.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/detail.js"></script>
+<script src="js/history.js"></script>
+</body>
+</html>

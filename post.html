@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>List waste — ReCircle</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<main class="wrap">
+  <div class="page-head">
+    <span class="eyebrow">New listing</span>
+    <h1>Give it a second life</h1>
+    <p>Tell people what you have — or what you're looking for. Clear details and a photo help it get picked up faster.</p>
+  </div>
+
+  <form id="postForm" class="post-layout" novalidate>
+    <div class="card form">
+      <fieldset>
+        <legend>I want to…</legend>
+        <div class="kind-pick">
+          <label><input type="radio" name="kind" value="offer" checked>
+            <span><strong>Give away / sell</strong><span class="muted small">I have material someone could use</span></span></label>
+          <label><input type="radio" name="kind" value="wanted">
+            <span><strong>Find / request</strong><span class="muted small">I'm looking for a material</span></span></label>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Category</legend>
+        <div class="cat-pick" id="catPick"></div>
+      </fieldset>
+
+      <label>Title
+        <input name="title" required maxlength="70" placeholder="e.g. Flattened cardboard boxes (20 pcs)">
+      </label>
+
+      <label>Description
+        <textarea name="desc" maxlength="500" placeholder="Condition, pickup time, how it could be reused…"></textarea>
+      </label>
+
+      <div class="row-3">
+        <label>Quantity<input name="qty" type="number" min="1" step="any" required value="1"></label>
+        <label>Unit
+          <select name="unit">
+            <option>pieces</option><option>kg</option><option>bags</option><option>items</option><option>sacks</option><option>kg/day</option>
+          </select>
+        </label>
+        <label>Approx. weight (kg) <span class="hint">used for impact</span><input name="weightKg" type="number" min="0.1" step="0.1" required value="5"></label>
+      </div>
+
+      <div class="row-2">
+        <label>Condition<input name="condition" maxlength="40" placeholder="Clean, dry, working…"></label>
+        <label>Price in ₹ <span class="hint">0 = free</span><input name="price" type="number" min="0" step="1" value="0"></label>
+      </div>
+
+      <label>Photo <span class="hint">optional — stays on this device</span>
+        <span class="photo-drop" id="photoDrop">
+          <span>📷 <b>Tap to add a photo</b><br><span class="small">JPG or PNG</span></span>
+          <input type="file" name="photo" accept="image/*">
+        </span>
+      </label>
+
+      <div>
+        <label for="placeInput">Pickup location <span class="hint">click the map or drag the pin</span></label>
+        <div class="row-2" style="margin:6px 0 10px">
+          <input id="placeInput" name="place" maxlength="40" placeholder="Area / town">
+          <button type="button" class="btn ghost" id="geoBtn">📍 Use my location</button>
+        </div>
+        <div id="pickMap"></div>
+      </div>
+
+      <div class="form-actions">
+        <a class="btn ghost" href="marketplace.html">Cancel</a>
+        <button class="btn primary" type="submit">Publish listing</button>
+      </div>
+    </div>
+
+    <aside class="post-side">
+      <div class="card impact-preview">
+        <div class="small" style="opacity:.8;text-transform:uppercase;letter-spacing:.1em;font-weight:700">Estimated impact</div>
+        <div class="num" id="impactNum">0 kg</div>
+        <p>CO₂e avoided if this is reused instead of dumped.</p>
+      </div>
+      <div>
+        <p class="small muted" style="margin-bottom:8px">Preview</p>
+        <div id="preview"></div>
+      </div>
+    </aside>
+  </form>
+</main>
+
+<script src="vendor/leaflet/leaflet.js"></script>
+<script src="js/data.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/detail.js"></script>
+<script src="js/post.js"></script>
+</body>
+</html>

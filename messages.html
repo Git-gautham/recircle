@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Messages — ReCircle</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<main class="wrap">
+  <div class="page-head" style="padding-bottom:16px">
+    <span class="eyebrow">Messages</span>
+    <h1 style="font-size:clamp(1.8rem,4vw,2.6rem)">Arrange the hand-off</h1>
+  </div>
+
+  <div class="card chat-layout" id="chatLayout">
+    <div class="convo-list">
+      <h3>Conversations</h3>
+      <div id="convoList"></div>
+    </div>
+    <section class="chat" id="chat" aria-live="polite"></section>
+  </div>
+</main>
+
+<script src="js/data.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/detail.js"></script>
+<script src="js/messages.js"></script>
+</body>
+</html>

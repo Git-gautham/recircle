@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Marketplace — ReCircle</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<main class="wrap">
+  <div class="page-head">
+    <span class="eyebrow">Marketplace</span>
+    <h1>Find materials near you</h1>
+    <p>Browse what people are giving away or looking for. Filter by material and distance, then message them to arrange a pickup.</p>
+  </div>
+
+  <!-- filters -->
+  <div class="card toolbar">
+    <div class="search"><input id="q" type="search" placeholder="Search cardboard, bottles, wires…" aria-label="Search listings"></div>
+    <div class="seg" id="kindSeg" role="group" aria-label="Listing type">
+      <button data-kind="all" class="on">All</button>
+      <button data-kind="offer">Available</button>
+      <button data-kind="wanted">Wanted</button>
+    </div>
+    <label class="range">Within <input type="range" id="radius" min="1" max="51" value="51"> <b id="radiusLabel">any distance</b></label>
+    <button class="btn ghost sm" id="locBtn">📍 Use my location</button>
+  </div>
+
+  <div class="chips" id="catChips" role="group" aria-label="Category"></div>
+
+  <span class="seg view-toggle" id="viewSeg" style="margin-bottom:14px">
+    <button data-view="list" class="on">List view</button>
+    <button data-view="map">Map view</button>
+  </span>
+
+  <div class="market-layout" id="layout">
+    <section class="list-panel">
+      <div class="results-meta">
+        <span id="count"></span>
+        <span style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <label class="small"><input type="checkbox" id="showDone" style="width:auto"> Show exchanged</label>
+          <select id="sort" aria-label="Sort">
+            <option value="near">Nearest first</option>
+            <option value="new">Newest first</option>
+            <option value="free">Free first</option>
+            <option value="heavy">Heaviest first</option>
+          </select>
+        </span>
+      </div>
+      <div class="grid" id="results"></div>
+    </section>
+
+    <aside class="card map-panel">
+      <div id="map" aria-label="Map of listings"></div>
+      <div class="map-foot">
+        <span class="muted" id="locLabel"></span>
+        <span class="muted">● Available &nbsp; ◌ Wanted</span>
+      </div>
+    </aside>
+  </div>
+</main>
+
+<script src="vendor/leaflet/leaflet.js"></script>
+<script src="js/data.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/detail.js"></script>
+<script src="js/marketplace.js"></script>
+</body>
+</html>
