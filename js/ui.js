@@ -174,7 +174,9 @@ function renderChrome() {
 function refreshChrome() {
   const me = Store.me();
   const btn = $("#profileBtn");
-  if (btn) btn.innerHTML = avatar(me) + `<span class="profile-name">${esc(me.name)}</span>`;
+  if (btn) btn.innerHTML = Auth.isSignedIn()
+    ? avatar(me) + `<span class="profile-name">${esc(me.name)}</span>`
+    : `<span class="profile-name">Sign in</span>`;
   const n = Store.unreadCount();
   $$(".nav-badge").forEach(b => { b.hidden = !n; b.textContent = n; });
 }
@@ -204,6 +206,7 @@ function escClose(e) { if (e.key === "Escape") closeModal(); }
 
 /* ---------- profile ---------- */
 function openProfile() {
+  if (!Auth.isSignedIn()) return openAuth();
   const me = Store.me();
   openModal(`
     <h2>Your profile</h2>
@@ -220,6 +223,7 @@ function openProfile() {
         <button type="button" class="btn ghost" id="geoBtn">📍 Use my location</button>
         <button class="btn primary">Save</button>
       </div>
+      <button type="button" class="link-btn" id="signOutBtn">Sign out</button>
     </form>`, {
     onOpen(m) {
       $("#geoBtn", m).addEventListener("click", async () => {
@@ -229,9 +233,57 @@ function openProfile() {
       $("#profileForm", m).addEventListener("submit", e => {
         e.preventDefault();
         const f = new FormData(e.target);
-        Store.saveMe({ name: f.get("name").trim() || "Guest User", role: f.get("role"), place: f.get("place").trim() });
-        closeModal(); refreshChrome(); toast("Profile saved");
-        document.dispatchEvent(new CustomEvent("profilechange"));
+        Auth.saveProfile({ name: f.get("name"), role: f.get("role"), place: f.get("place") })
+          .then(() => { closeModal(); refreshChrome(); toast("Profile saved"); })
+          .catch(err => toast(err.message || "Couldn't save profile"));
+      });
+      $("#signOutBtn", m).addEventListener("click", async () => {
+        try { await Auth.signOut(); }
+        catch (err) { toast(err.message || "Couldn't sign out"); }
+      });
+    }
+  });
+}
+
+function openAuth() {
+  openModal(`
+    <h2 id="authTitle">Welcome to ReCircle</h2>
+    <p class="muted" id="authIntro">Sign in to save your profile and connect with the community.</p>
+    <form id="authForm" class="form">
+      <label>Email<input name="email" type="email" required autocomplete="email"></label>
+      <label>Password<input name="password" type="password" required minlength="6" autocomplete="current-password"></label>
+      <label id="authNameWrap" hidden>Name<input name="name" maxlength="40" autocomplete="name"></label>
+      <div class="form-actions">
+        <button class="btn primary" id="authSubmit">Sign in</button>
+        <button class="btn ghost" type="button" id="authToggle">Create account</button>
+      </div>
+      <p class="muted small" id="authError" role="alert"></p>
+    </form>`, {
+    onOpen(m) {
+      let signup = false;
+      const title = $("#authTitle", m), intro = $("#authIntro", m), name = $("#authNameWrap", m);
+      const submit = $("#authSubmit", m), toggle = $("#authToggle", m), error = $("#authError", m);
+      toggle.addEventListener("click", () => {
+        signup = !signup;
+        title.textContent = signup ? "Create your ReCircle account" : "Welcome to ReCircle";
+        intro.textContent = signup ? "Join the local circular-economy community." : "Sign in to save your profile and connect with the community.";
+        name.hidden = !signup;
+        submit.textContent = signup ? "Create account" : "Sign in";
+        toggle.textContent = signup ? "I already have an account" : "Create account";
+      });
+      $("#authForm", m).addEventListener("submit", async e => {
+        e.preventDefault(); error.textContent = "";
+        const f = new FormData(e.target);
+        submit.disabled = true;
+        try {
+          if (signup) {
+            const session = await Auth.signUp(f.get("email"), f.get("password"), f.get("name"));
+            if (!session) { error.textContent = "Check your email to confirm your account, then sign in."; return; }
+          } else await Auth.signIn(f.get("email"), f.get("password"));
+          closeModal(); refreshChrome(); toast("Signed in");
+        } catch (err) {
+          error.textContent = err.message || "Authentication failed";
+        } finally { submit.disabled = false; }
       });
     }
   });
@@ -276,4 +328,8 @@ function logoSVG() {
   </svg>`;
 }
 
-document.addEventListener("DOMContentLoaded", renderChrome);
+document.addEventListener("DOMContentLoaded", async () => {
+  try { await Auth.init(); }
+  catch (err) { console.error("Supabase authentication could not initialize", err); }
+  renderChrome();
+});

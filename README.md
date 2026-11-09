@@ -72,6 +72,22 @@ recircle/
 
 GitHub Pages is configured to deploy the `main` branch from the repository root.
 
+## User management
+
+The site now uses Supabase Authentication for account creation, sign-in, profiles,
+roles and sign-out. To enable it in a new Supabase project:
+
+1. Open the Supabase SQL Editor.
+2. Run [`supabase/schema.sql`](supabase/schema.sql) to create the profiles table,
+   automatic profile creation trigger and Row Level Security policies.
+3. In **Authentication → Providers**, enable Email.
+4. Visit the live site and click **Sign in** in the header.
+
+The frontend contains only the Supabase publishable key. Never expose a
+`service_role` key in the site. The current marketplace demo data remains
+browser-local; the schema is the secure foundation for moving listings,
+conversations and messages to shared persistence.
+
 ## Notes on the demo
 
 - Data is stored in the browser (`localStorage`), so each visitor has their own copy. No server or sign-up needed.
