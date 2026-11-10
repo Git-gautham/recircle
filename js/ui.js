@@ -148,7 +148,6 @@ function renderChrome() {
       </div>
       <div class="footer-meta">
         <p class="muted">Made with open-source tools: Leaflet, OpenStreetMap, Chart.js, Fraunces &amp; DM Sans.</p>
-        <button class="link-btn" id="resetDemo">Reset demo data</button>
       </div>
     </div>`;
   document.body.appendChild(footer);
@@ -162,12 +161,6 @@ function renderChrome() {
 
   $("#themeBtn").addEventListener("click", toggleTheme);
   $("#profileBtn").addEventListener("click", openProfile);
-  $("#resetDemo").addEventListener("click", () => {
-    if (confirm("Reset all demo data? Your listings, chats and exchanges will be cleared.")) {
-      Store.reset(); location.reload();
-    }
-  });
-
   refreshChrome();
 }
 

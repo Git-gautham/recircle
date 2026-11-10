@@ -63,7 +63,7 @@ recircle/
 ### Common edits
 - **Change colours:** `css/style.css` → `:root { --brand: … }`
 - **Change menu links:** `js/ui.js` → `NAV_LINKS`
-- **Change demo listings / map centre / CO₂ factors:** `js/data.js`, then click **Reset demo data** in the footer.
+- **Change the map centre / CO₂ factors:** `js/data.js`.
 
 ## Published links
 
@@ -98,10 +98,9 @@ browser-local.
 
 ## Notes on the demo
 
-- Seed demo data is stored in the browser (`localStorage`); authenticated
-  listings and messages are shared through Supabase.
-- The other person in chat is simulated with friendly auto-replies so judges can try the full flow:
-  **List waste → Messages → Mark as exchanged → see it on History & Impact.**
+- New users start with an empty marketplace; authenticated listings and
+  messages are shared through Supabase.
+- Messages are sent between real authenticated accounts.
 - CO₂e numbers are indicative estimates (weight × per-material factor in `js/data.js`).
 - To make it truly multi-user later, keep the function names in `js/store.js` and swap their insides
   for an open-source backend such as Supabase or PocketBase.

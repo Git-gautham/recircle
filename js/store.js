@@ -6,7 +6,7 @@
    function names and change only their insides.
    ========================================================= */
 
-const STORE_KEY = "recircle_v1";
+const STORE_KEY = "recircle_v2";
 let ME = "me";
 
 const Store = (() => {
@@ -22,23 +22,16 @@ const Store = (() => {
   }
 
   function seed() {
-    const now = Date.now();
     return {
-      version: 1,
+      version: 2,
       user: {
         id: ME, name: "Guest User", role: "individual",
         place: DEFAULT_CENTER.place, lat: DEFAULT_CENTER.lat, lng: DEFAULT_CENTER.lng
       },
-      users: USERS.map(u => ({ ...u })),
-      listings: LISTINGS.map(l => {
-        const { ago, ...rest } = l;
-        return { ...rest, status: "available", createdAt: now - ago, image: null };
-      }),
+      users: [],
+      listings: [],
       conversations: [],
-      history: HISTORY.map((h, i) => {
-        const { monthsAgo, ...rest } = h;
-        return { id: "h" + (i + 1), listingId: null, ...rest, date: monthsAgoDate(monthsAgo, i) };
-      })
+      history: []
     };
   }
 
@@ -53,7 +46,7 @@ const Store = (() => {
       const raw = localStorage.getItem(STORE_KEY);
       state = raw ? JSON.parse(raw) : null;
     } catch (e) { state = null; }
-    if (!state || state.version !== 1) { state = seed(); save(); }
+    if (!state || state.version !== 2) { state = seed(); save(); }
     return state;
   }
 

@@ -1,6 +1,4 @@
-/* ReCircle — buyer/seller messaging
-   In this demo the other person is simulated with friendly
-   auto-replies (see AUTO_REPLIES in data.js). */
+/* ReCircle — buyer/seller messaging */
 
 const QUICK = ["Is it still available?", "When can I pick it up?", "Can you share the exact location?", "Thank you! 🙏"];
 let activeId = new URLSearchParams(location.search).get("c");
@@ -84,20 +82,6 @@ function send(text) {
   Store.addMessage(id, ME, text);
   renderAll();
   $("#msg")?.focus();
-  /* simulated reply */
-  const c = Store.conversation(id);
-  const mine = c.messages.filter(m => m.from === ME).length;
-  setTimeout(() => {
-    if (activeId === id) {
-      const body = $("#chatBody");
-      body.insertAdjacentHTML("beforeend", `<div class="typing">${esc(Store.userById(c.otherId).name.split(" ")[0])} is typing…</div>`);
-      body.scrollTop = body.scrollHeight;
-    }
-  }, 500);
-  setTimeout(() => {
-    Store.addMessage(id, c.otherId, AUTO_REPLIES[(mine - 1) % AUTO_REPLIES.length]);
-    renderAll();
-  }, 1600);
 }
 
 function confirmExchange(c, l, other) {

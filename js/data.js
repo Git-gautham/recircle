@@ -1,13 +1,9 @@
 /* =========================================================
    ReCircle — seed data
    ---------------------------------------------------------
-   Everything the demo starts with lives here. Edit freely:
+   Shared reference data lives here. Edit freely:
    - CATEGORIES : waste categories + impact factors
-   - USERS      : demo community members
-   - LISTINGS   : demo offers / wanted posts
-   - HISTORY    : past community exchanges (feeds the dashboard)
-   After editing, click "Reset demo data" in the footer so the
-   browser reloads this file into localStorage.
+   The production store starts with no seeded users, listings or history.
    ========================================================= */
 
 /* Default map centre: Perinthalmanna, Malappuram (Kerala) */
@@ -139,13 +135,4 @@ const HISTORY = [
   { title: "Broken tiles",             category: "construction", weightKg: 120, fromId: "u4", toId: "u2", monthsAgo: 0 },
   { title: "PET bottles",              category: "plastic", weightKg: 55,  fromId: "u2",  toId: "u3",  monthsAgo: 0 },
   { title: "Newspapers",               category: "paper",   weightKg: 40,  fromId: "u10", toId: "u3",  monthsAgo: 0 }
-];
-
-/* Canned replies used to simulate the other person in the demo chat */
-const AUTO_REPLIES = [
-  "Hi! Yes, it's still available 🙂",
-  "Sure, when would you like to pick it up?",
-  "Great — I'm usually free after 4 pm. Does that work?",
-  "Sounds good. I'll keep it aside for you.",
-  "Thanks for reusing it instead of letting it go to waste! ♻️"
 ];

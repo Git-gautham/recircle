@@ -62,21 +62,6 @@ function resizeImage(file, max = 800) {
   });
 }
 
-/* Demo only: a community member responds to a new listing so the
-   chat feature can be tried immediately. Remove for a real backend. */
-function simulateInterest(listing) {
-  if (Auth.isSignedIn()) return null;
-  const pool = USERS.filter(u => listing.kind === "offer"
-    ? ["student", "recycler", "individual"].includes(u.role)
-    : ["business", "individual"].includes(u.role));
-  const who = pool[Math.floor(Math.random() * pool.length)];
-  const c = Store.openConversation(listing.id, who.id);
-  Store.addMessage(c.id, who.id, listing.kind === "offer"
-    ? `Hi! I saw your "${listing.title}". Is it still available? I could really use it.`
-    : `Hello, I have some ${CATEGORIES[listing.category].label.toLowerCase()} that might work for you. Interested?`);
-  return who;
-}
-
 document.addEventListener("DOMContentLoaded", () => {
   const params = new URLSearchParams(location.search);
   const startCat = params.get("cat") || "paper";
@@ -125,13 +110,12 @@ document.addEventListener("DOMContentLoaded", () => {
     let listing;
     try { listing = Store.addListing(d); }
     catch (err) { toast("Storage is full — try a smaller photo"); return; }
-    const who = simulateInterest(listing);
     refreshChrome();
 
     openModal(`
       <h2>🎉 Listing published!</h2>
       <p>Your ${d.kind === "wanted" ? "request" : "listing"} is now live on the marketplace.</p>
-      ${who ? `<p class="muted small">Demo: <b>${esc(who.name)}</b> has already sent you a message.</p>` : `<p class="muted small">Your listing is shared with the ReCircle community.</p>`}
+      <p class="muted small">Your listing is shared with the ReCircle community.</p>
       <div class="form-actions">
         <a class="btn ghost" href="marketplace.html">View marketplace</a>
         <a class="btn primary" href="messages.html">Open messages</a>
