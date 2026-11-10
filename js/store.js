@@ -128,10 +128,17 @@ const Store = (() => {
       document.dispatchEvent(new CustomEvent("listingschange")); return l;
     },
     async updateListing(id, patch) {
-      const row = {}; if (patch.status) row.status = patch.status;
-      const { error } = await supabaseClient.from("listings").update(row).eq("id", id);
-      if (error) throw error;
-      const l = this.listing(id); if (l) Object.assign(l, patch); save(); return l;
+      const row = {};
+      ["kind", "category", "title", "description", "qty", "unit", "weight_kg", "condition", "price", "place", "lat", "lng", "status"]
+        .forEach(key => { if (patch[key] !== undefined) row[key] = patch[key]; });
+      if (patch.desc !== undefined) row.description = patch.desc;
+      if (patch.weightKg !== undefined) row.weight_kg = patch.weightKg;
+      if (!Object.keys(row).length) throw new Error("No listing changes to save");
+      const result = await supabaseClient.from("listings").update(row).eq("id", id).select(LISTING_COLUMNS).single();
+      if (result.error) throw result.error;
+      const updated = remoteListing(result.data), s = load();
+      s.remoteListings = (s.remoteListings || []).map(l => l.id === id ? updated : l);
+      save(); return updated;
     },
     async deleteListing(id) {
       const l = this.listing(id), { error } = await supabaseClient.from("listings").delete().eq("id", id);

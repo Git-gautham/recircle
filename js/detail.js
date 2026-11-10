@@ -30,7 +30,8 @@ function openListing(id) {
     : `<span aria-hidden="true">${cat.icon}</span>`;
 
   const actions = mine
-    ? `<button class="btn ghost" data-act="toggle">${l.status === "reserved" ? "Mark available" : "Mark reserved"}</button>
+    ? `<button class="btn ghost" data-act="edit">Edit listing</button>
+       <button class="btn ghost" data-act="toggle">${l.status === "reserved" ? "Mark available" : "Mark reserved"}</button>
        <button class="btn ghost" data-act="delete">Delete</button>
        <a class="btn primary" href="messages.html">View messages</a>`
     : l.status === "exchanged"
@@ -79,6 +80,67 @@ function openListing(id) {
         const act = e.target.closest("[data-act]")?.dataset.act;
         const open = e.target.closest("[data-open]")?.dataset.open;
         if (open) return openListing(open);
+        if (act === "edit") {
+          openModal(`
+            <h2>Edit listing</h2>
+            <form id="editListingForm" class="form">
+              <label>Post type
+                <select name="kind">
+                  <option value="offer" ${l.kind === "offer" ? "selected" : ""}>Give away / sell</option>
+                  <option value="wanted" ${l.kind === "wanted" ? "selected" : ""}>Find / request</option>
+                </select>
+              </label>
+              <label>Category
+                <select name="category">${Object.entries(CATEGORIES).map(([key, value]) =>
+                  `<option value="${key}" ${l.category === key ? "selected" : ""}>${value.icon} ${esc(value.label)}</option>`).join("")}</select>
+              </label>
+              <label>Title<input name="title" required minlength="3" maxlength="70" value="${esc(l.title)}"></label>
+              <label>Description<textarea name="description" maxlength="500">${esc(l.desc)}</textarea></label>
+              <div class="row-3">
+                <label>Quantity<input name="qty" type="number" min="1" step="any" required value="${esc(l.qty)}"></label>
+                <label>Unit
+                  <select name="unit">${["pieces", "kg", "bags", "items", "sacks", "kg/day"].map(unit =>
+                    `<option ${l.unit === unit ? "selected" : ""}>${unit}</option>`).join("")}</select>
+                </label>
+                <label>Approx. weight (kg)<input name="weightKg" type="number" min="0.1" step="0.1" required value="${esc(l.weightKg)}"></label>
+              </div>
+              <div class="row-2">
+                <label>Condition<input name="condition" maxlength="40" value="${esc(l.condition || "")}"></label>
+                <label>Price in ₹<input name="price" type="number" min="0" step="1" value="${esc(l.price)}"></label>
+              </div>
+              <label>Pickup area<input name="place" maxlength="40" value="${esc(l.place || "")}"></label>
+              <p class="muted small">To change the map pin, create a new listing. The current approximate location will be kept.</p>
+              <div class="form-actions"><button type="button" class="btn ghost" data-act="cancel-edit">Cancel</button><button class="btn primary">Save changes</button></div>
+            </form>`, {
+              wide: true,
+              onOpen(editModal) {
+                $("[data-act=cancel-edit]", editModal).addEventListener("click", closeModal);
+                $("#editListingForm", editModal).addEventListener("submit", async ev => {
+                  ev.preventDefault();
+                  const f = new FormData(ev.target);
+                  const title = String(f.get("title") || "").trim();
+                  const weightKg = Number(f.get("weightKg"));
+                  if (title.length < 3 || !(weightKg > 0)) { toast("Enter a title and a weight greater than zero"); return; }
+                  const button = ev.submitter;
+                  button.disabled = true; button.textContent = "Saving…";
+                  try {
+                    await Store.updateListing(l.id, {
+                      kind: f.get("kind"), category: f.get("category"), title,
+                      desc: String(f.get("description") || "").trim(), qty: Number(f.get("qty")),
+                      unit: f.get("unit"), weightKg, condition: String(f.get("condition") || "").trim(),
+                      price: Number(f.get("price")) || 0, place: String(f.get("place") || "").trim()
+                    });
+                    closeModal(); toast("Listing updated"); document.dispatchEvent(new CustomEvent("listingschange"));
+                  } catch (err) {
+                    toast(err.message || "Couldn't update listing");
+                    button.disabled = false; button.textContent = "Save changes";
+                  }
+                });
+              }
+            });
+          return;
+        }
+        if (act === "cancel-edit") { closeModal(); return; }
         if (act === "chat") {
           if (!Auth.isSignedIn()) { closeModal(); openAuth(); return; }
           const btn = e.target.closest("[data-act]"); btn.disabled = true;
