@@ -141,7 +141,7 @@ function renderChrome() {
         <button class="icon-btn" id="themeBtn" aria-label="Toggle dark mode" title="Toggle dark mode">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
         </button>
-        <button class="profile-btn" id="profileBtn" aria-label="Edit profile"></button>
+        <button class="profile-btn" id="profileBtn" aria-label="Sign in"></button>
       </div>
     </div>`;
   document.body.prepend(header);
@@ -179,9 +179,14 @@ function renderChrome() {
 function refreshChrome() {
   const me = Store.me();
   const btn = $("#profileBtn");
-  if (btn) btn.innerHTML = Auth.isSignedIn()
-    ? avatar(me) + `<span class="profile-name">${esc(me.name)}</span>`
-    : `<span class="profile-name">Sign in</span>`;
+  if (btn) {
+    const signedIn = Auth.isSignedIn();
+    btn.classList.toggle("signed-out", !signedIn);
+    btn.setAttribute("aria-label", signedIn ? "Edit profile" : "Sign in");
+    btn.innerHTML = signedIn
+      ? avatar(me) + `<span class="profile-name">${esc(me.name)}</span>`
+      : `<span class="profile-name">Sign in</span>`;
+  }
   const n = Store.unreadCount();
   $$(".nav-badge").forEach(b => { b.hidden = !n; b.textContent = n; });
 }
