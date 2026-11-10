@@ -33,8 +33,7 @@ const Auth = (() => {
     profile = data;
     if (data) Store.saveMe({
       id: data.id, name: data.display_name || user().email?.split("@")[0] || "ReCircle user",
-      role: data.role || "individual", place: data.place || "",
-      lat: data.lat ?? DEFAULT_CENTER.lat, lng: data.lng ?? DEFAULT_CENTER.lng
+      role: data.role || "individual", place: data.place || ""
     });
   }
 

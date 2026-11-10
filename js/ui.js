@@ -89,11 +89,15 @@ function detectLocation() {
     if (!navigator.geolocation) return reject(new Error("Geolocation not supported"));
     navigator.geolocation.getCurrentPosition(
       p => {
-        const loc = { lat: +p.coords.latitude.toFixed(5), lng: +p.coords.longitude.toFixed(5), place: "My location" };
+        const loc = {
+          lat: +p.coords.latitude.toFixed(5),
+          lng: +p.coords.longitude.toFixed(5),
+          place: "My location"
+        };
         Store.saveMe(loc); resolve(loc);
       },
       err => reject(err),
-      { enableHighAccuracy: false, timeout: 10000 }
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
     );
   });
 }
