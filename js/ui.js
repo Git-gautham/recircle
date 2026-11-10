@@ -285,7 +285,12 @@ function openAuth() {
     <p class="muted" id="authIntro">Sign in to save your profile and connect with the community.</p>
     <form id="authForm" class="form">
       <label>Email<input name="email" type="email" required autocomplete="email"></label>
-      <label>Password<input name="password" type="password" required minlength="8" autocomplete="current-password"></label>
+      <label>Password
+        <span class="password-field"><input name="password" type="password" required minlength="8" autocomplete="current-password"><button type="button" class="password-toggle" data-target="password" aria-label="Show password">Show</button></span>
+      </label>
+      <label id="authConfirmWrap" hidden>Confirm password
+        <span class="password-field"><input name="passwordConfirm" type="password" minlength="8" autocomplete="new-password"><button type="button" class="password-toggle" data-target="passwordConfirm" aria-label="Show password">Show</button></span>
+      </label>
       <label id="authNameWrap" hidden>Name<input name="name" maxlength="40" autocomplete="name"></label>
       <div class="form-actions">
         <button class="btn primary" id="authSubmit">Sign in</button>
@@ -298,6 +303,7 @@ function openAuth() {
     onOpen(m) {
       let signup = false;
       const title = $("#authTitle", m), intro = $("#authIntro", m), name = $("#authNameWrap", m);
+      const confirm = $("#authConfirmWrap", m);
       const submit = $("#authSubmit", m), toggle = $("#authToggle", m), error = $("#authError", m);
       $("#forgotBtn", m).addEventListener("click", async () => {
         const email = $("[name=email]", m).value.trim();
@@ -316,15 +322,29 @@ function openAuth() {
         title.textContent = signup ? "Create your ReCircle account" : "Welcome to ReCircle";
         intro.textContent = signup ? "Join the local circular-economy community." : "Sign in to save your profile and connect with the community.";
         name.hidden = !signup;
+        confirm.hidden = !signup;
+        $("[name=passwordConfirm]", m).required = signup;
+        $("[name=password]", m).autocomplete = signup ? "new-password" : "current-password";
         submit.textContent = signup ? "Create account" : "Sign in";
         toggle.textContent = signup ? "I already have an account" : "Create account";
       });
+      $$(".password-toggle", m).forEach(button => button.addEventListener("click", () => {
+        const input = $(`[name="${button.dataset.target}"]`, m);
+        const visible = input.type === "text";
+        input.type = visible ? "password" : "text";
+        button.textContent = visible ? "Show" : "Hide";
+        button.setAttribute("aria-label", visible ? "Show password" : "Hide password");
+      }));
       $("#authForm", m).addEventListener("submit", async e => {
         e.preventDefault(); error.textContent = "";
         const f = new FormData(e.target);
         submit.disabled = true;
         try {
           if (signup) {
+            if (f.get("password") !== f.get("passwordConfirm")) {
+              error.textContent = "Passwords do not match.";
+              return;
+            }
             const session = await Auth.signUp(f.get("email"), f.get("password"), f.get("name"));
             if (!session) { error.textContent = "Check your email to confirm your account, then sign in."; return; }
           } else await Auth.signIn(f.get("email"), f.get("password"));

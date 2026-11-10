@@ -120,6 +120,12 @@ p { margin: 0 0 1em; }
   width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--line);
   background: var(--surface); color: var(--ink); display: grid; place-items: center; cursor: pointer;
 }
+.password-field { position: relative; display: block; }
+.password-field input { padding-right: 64px; }
+.password-toggle {
+  position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+  border: 0; background: none; color: var(--brand-2); cursor: pointer; font: 600 .78rem var(--font-body);
+}
 
 /* ---------- header ---------- */
 .site-header {
