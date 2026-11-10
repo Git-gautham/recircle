@@ -86,10 +86,11 @@ function renderChat() {
       ${!c.messages.length ? `<p class="muted small" style="text-align:center">Start the conversation — ask about condition, quantity or pickup time.</p>` : ""}
     </div>
     ${done || !replies.length ? "" : `<div class="quick-replies" aria-label="Suggested messages">${replies.map(q => `<button type="button">${esc(q)}</button>`).join("")}</div>`}
-    <form class="chat-input" id="chatForm">
-      <input id="msg" maxlength="1000" autocomplete="off" placeholder="Write a message…" aria-label="Message" ${done ? "" : "autofocus"}>
-      <button class="btn primary">Send</button>
-    </form>`;
+    ${done ? `<p class="chat-ended muted small">This exchange is complete. Messaging is closed.</p>` : `
+      <form class="chat-input" id="chatForm">
+        <input id="msg" maxlength="1000" autocomplete="off" placeholder="Write a message…" aria-label="Message" autofocus>
+        <button class="btn primary">Send</button>
+      </form>`}`;
 
   $("#chatLayout").classList.add("in-chat");
   const body = $("#chatBody"); body.scrollTop = body.scrollHeight;
