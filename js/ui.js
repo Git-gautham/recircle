@@ -180,14 +180,17 @@ function renderChrome() {
     <div class="wrap footer-inner">
       <div>
         <div class="brand small">${logoSVG()}<span>Re<em>Circle</em></span></div>
-        <p class="muted">One person's waste is another's raw material.<br>Built for TERRACODE 2026 · Theme: Green Tomorrow</p>
+        <p class="muted">One person's waste is another's raw material.<br>Built for TERRACODE 2026 · FOSS Club, MEA Engineering College<br>Theme: Green Tomorrow</p>
       </div>
       <div class="footer-links">
         ${NAV_LINKS.map(n => `<a href="${n.href}">${n.label}</a>`).join("")}
         <a href="privacy.html">Privacy</a>
       </div>
       <div class="footer-meta">
-        <p class="muted">Made with open-source tools: Leaflet, OpenStreetMap, Chart.js, Fraunces &amp; DM Sans.</p>
+        <p class="muted">Made by <strong>Gautham P Nair</strong> &amp; <strong>Lakshmi Nair</strong>.<br>
+          Contact: <a href="mailto:recircle.terracode@gmail.com">recircle.terracode@gmail.com</a></p>
+        <p class="muted small">Built with open-source tools: Supabase, Leaflet, OpenStreetMap, Chart.js, Fraunces &amp; DM Sans.
+          <a href="https://github.com/Git-gautham/recircle" target="_blank" rel="noopener">Source code</a></p>
       </div>
     </div>`;
   document.body.appendChild(footer);
