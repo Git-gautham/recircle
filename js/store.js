@@ -177,6 +177,8 @@ const Store = (() => {
     },
     markRead(convId) {
       const c = this.conversation(convId); if (!c) return;
+      const latestIncoming = c.messages.reduce((latest, m) => m.from === ME ? latest : Math.max(latest, m.ts), 0);
+      if (!c.unread && c.readAt >= latestIncoming) return;
       c.unread = 0; c.readAt = Date.now(); save();
       if (remote()) supabaseClient.rpc("mark_conversation_read", { p_conversation: convId }).then(({ error }) => { if (error) console.error("mark read failed", error); });
     },
