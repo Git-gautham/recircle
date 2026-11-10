@@ -22,12 +22,13 @@ function esc(str) {
   return String(str ?? "").replace(/[&<>"']/g, c =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
+/* Only allow photos from our own Storage bucket, or a local preview.
+   Empty values return "" so cards show the category icon instead. */
 function safeImageUrl(url) {
-  try {
-    const u = new URL(url, location.href);
-    return (u.protocol === "blob:" || (u.protocol === "https:" && (u.hostname === "axcpgigdwmhumvcuiqoy.supabase.co" || u.origin === location.origin)))
-      ? u.href : "";
-  } catch (e) { return ""; }
+  if (typeof url !== "string" || !url) return "";
+  if (url.startsWith("blob:" + location.origin + "/")) return url;
+  const bucket = SUPABASE_URL + "/storage/v1/object/public/listing-images/";
+  return url.startsWith(bucket) ? url : "";
 }
 
 /* Distance between two lat/lng points in km (Haversine formula) */
