@@ -59,9 +59,6 @@ function drawMap(items) {
     });
     markerLayer.addLayer(m);
   });
-  const pts = items.map(l => [l.lat, l.lng]).concat([[here.lat, here.lng]]);
-  if (radiusCircle) map.fitBounds(radiusCircle.getBounds(), { padding: [20, 20] });
-  else if (pts.length > 1) map.fitBounds(pts, { padding: [30, 30], maxZoom: 14 });
 }
 
 /* ---------- filtering ---------- */
@@ -124,6 +121,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
   render();
   bindCards($("#results"));
+
+  if (navigator.geolocation) {
+    detectLocation().then(loc => {
+      if (!map) return;
+      map.setView([loc.lat, loc.lng], 12);
+      render();
+    }).catch(() => {});
+  }
 
   let t;
   $("#q").addEventListener("input", e => { clearTimeout(t); t = setTimeout(() => { filters.q = e.target.value; render(); }, 150); });
