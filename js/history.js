@@ -55,7 +55,7 @@ function exportCSV() {
   const head = ["Date", "Item", "Category", "Weight (kg)", "CO2e avoided (kg)", "From", "To"];
   const q = v => `"${String(v).replace(/"/g, '""')}"`;
   const lines = [head.map(q).join(",")].concat(rows.map(h => [
-    new Date(h.date).toISOString().slice(0, 10), h.title, CATEGORIES[h.category].label, h.weightKg,
+    new Date(h.date).toISOString().slice(0, 10), h.title, (CATEGORIES[h.category] || CATEGORIES.other).label, h.weightKg,
     co2For(h.category, h.weightKg).toFixed(2), Store.userById(h.fromId).name, Store.userById(h.toId).name
   ].map(q).join(",")));
   const blob = new Blob([lines.join("\n")], { type: "text/csv" });

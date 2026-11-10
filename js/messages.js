@@ -17,7 +17,7 @@ function renderList() {
       ${avatar(other)}
       <span class="info">
         <span class="name"><span>${esc(other.name)}</span>${last ? `<time>${timeAgo(last.ts)}</time>` : ""}</span>
-        <span class="sub" style="display:block">${l ? CATEGORIES[l.category].icon + " " + esc(l.title) : "Listing removed"}</span>
+        <span class="sub" style="display:block">${l ? (CATEGORIES[l.category] || CATEGORIES.other).icon + " " + esc(l.title) : "Listing removed"}</span>
         <span class="last" style="display:block">${last ? (last.from === ME ? "You: " : "") + esc(last.text) : "Say hello 👋"}</span>
       </span>
       ${c.unread ? `<span class="unread">${c.unread}</span>` : ""}
@@ -47,11 +47,11 @@ function renderChat() {
       ${avatar(other)}
       <div class="who">
         <strong>${esc(other.name)}</strong>
-        ${l ? `<button class="link-btn small" id="openListing">${CATEGORIES[l.category].icon} ${esc(l.title)}</button>` : `<span class="small muted">Listing removed</span>`}
+        ${l ? `<button class="link-btn small" id="openListing">${(CATEGORIES[l.category] || CATEGORIES.other).icon} ${esc(l.title)}</button>` : `<span class="small muted">Listing removed</span>`}
       </div>
       ${l ? (done
         ? `<span class="cat" style="--cat:var(--ok)">✓ Exchanged</span>`
-        : `<button class="btn primary sm" id="doneBtn">✓ Mark as exchanged</button>`) : ""}
+        : (l.ownerId === ME ? `<button class="btn primary sm" id="doneBtn">✓ Mark as exchanged</button>` : "")) : ""}
     </div>
     <div class="chat-body" id="chatBody">
       ${c.messages.map(m => m.from === "system"
@@ -61,7 +61,7 @@ function renderChat() {
     </div>
     ${done ? "" : `<div class="quick-replies">${QUICK.map(q => `<button type="button">${esc(q)}</button>`).join("")}</div>`}
     <form class="chat-input" id="chatForm">
-      <input id="msg" autocomplete="off" placeholder="Write a message…" aria-label="Message" ${done ? "" : "autofocus"}>
+      <input id="msg" maxlength="1000" autocomplete="off" placeholder="Write a message…" aria-label="Message" ${done ? "" : "autofocus"}>
       <button class="btn primary">Send</button>
     </form>`;
 
@@ -75,13 +75,14 @@ function renderChat() {
   $("#doneBtn")?.addEventListener("click", () => confirmExchange(c, l, other));
 }
 
-function send(text) {
+async function send(text) {
   text = String(text).trim();
   if (!text || !activeId) return;
   const id = activeId;
-  Store.addMessage(id, ME, text);
-  renderAll();
-  $("#msg")?.focus();
+  const input = $("#msg"); if (input) input.disabled = true;
+  try { await Store.sendMessage(id, text); renderAll(); }
+  catch (err) { toast(err.message || "Message not sent"); if (input) input.value = text; }
+  finally { const i = $("#msg"); if (i) { i.disabled = false; i.focus(); } }
 }
 
 function confirmExchange(c, l, other) {
@@ -101,9 +102,10 @@ function confirmExchange(c, l, other) {
     onOpen(m) {
       $("#noBtn", m).addEventListener("click", closeModal);
       $("#yesBtn", m).addEventListener("click", () => {
-        Store.completeExchange(c.id);
-        closeModal(); renderAll();
-        toast(`Nice! ${l.weightKg} kg kept out of landfill 🌱`);
+        Store.completeExchange(c.id).then(() => {
+          closeModal(); renderAll();
+          toast(`Nice! ${l.weightKg} kg kept out of landfill 🌱`);
+        }).catch(err => toast(err.message || "Couldn't complete the exchange"));
       });
     }
   });
@@ -122,4 +124,5 @@ document.addEventListener("DOMContentLoaded", () => {
     $("#msg")?.focus();
   });
   document.addEventListener("listingschange", renderAll);
+  document.addEventListener("messageschange", renderAll);
 });

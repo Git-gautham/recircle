@@ -102,8 +102,8 @@ function renderCharts(rows) {
   catChart = new Chart($("#catChart"), {
     type: "doughnut",
     data: {
-      labels: cats.map(k => CATEGORIES[k].label),
-      datasets: [{ data: cats.map(k => byCat[k]), backgroundColor: cats.map(k => CATEGORIES[k].color),
+      labels: cats.map(k => (CATEGORIES[k] || CATEGORIES.other).label),
+      datasets: [{ data: cats.map(k => byCat[k]), backgroundColor: cats.map(k => (CATEGORIES[k] || CATEGORIES.other).color),
                    borderColor: css("--surface"), borderWidth: 2 }]
     },
     options: {
@@ -150,4 +150,5 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   document.addEventListener("themechange", () => renderCharts(data()));
   document.addEventListener("profilechange", renderAll);
+  document.addEventListener("listingschange", renderAll);
 });

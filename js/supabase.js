@@ -17,8 +17,7 @@ const Auth = (() => {
       name: profile?.display_name || me.name,
       role: profile?.role || me.role,
       place: profile?.place || me.place,
-      lat: profile?.lat ?? me.lat,
-      lng: profile?.lng ?? me.lng
+      lat: me.lat, lng: me.lng
     };
   }
 
@@ -27,7 +26,7 @@ const Auth = (() => {
     ME = user().id;
     const { data, error } = await supabaseClient
       .from("profiles")
-      .select("id, display_name, role, place, lat, lng")
+      .select("id, display_name, role, place")
       .eq("id", user().id)
       .maybeSingle();
     if (error) throw error;
@@ -45,14 +44,12 @@ const Auth = (() => {
       id: user().id,
       display_name: String(patch.name || "").trim() || "ReCircle user",
       role: ["individual", "student", "recycler", "business"].includes(patch.role) ? patch.role : "individual",
-      place: String(patch.place || "").trim(),
-      lat: Number(patch.lat ?? Store.me().lat),
-      lng: Number(patch.lng ?? Store.me().lng)
+      place: String(patch.place || "").trim()
     };
     const { data, error } = await supabaseClient.from("profiles").upsert(next).select().single();
     if (error) throw error;
     profile = data;
-    Store.saveMe({ id: data.id, name: data.display_name, role: data.role, place: data.place, lat: data.lat, lng: data.lng });
+    Store.saveMe({ id: data.id, name: data.display_name, role: data.role, place: data.place });
     document.dispatchEvent(new CustomEvent("profilechange"));
   }
 

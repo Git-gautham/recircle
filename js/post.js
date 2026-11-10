@@ -1,6 +1,6 @@
 /* ReCircle — List waste form */
 
-let pickMap, pickMarker, photoData = null;
+let pickMap, pickMarker, photoPreview = null, photoBlobs = null;
 const loc = { ...myLocationSafe() };
 
 function myLocationSafe() { try { return myLocation(); } catch (e) { return { ...DEFAULT_CENTER }; } }
@@ -20,7 +20,7 @@ function formData() {
     place: (f.get("place") || "").trim() || "Near " + DEFAULT_CENTER.place,
     lat: +loc.lat.toFixed(5),
     lng: +loc.lng.toFixed(5),
-    image: photoData
+    image: photoPreview
   };
 }
 
@@ -46,7 +46,7 @@ function initPickMap() {
 }
 
 /* Shrink photos so they fit comfortably in browser storage */
-function resizeImage(file, max = 800) {
+function resizeToBlob(file, max, quality = 0.7) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => {
@@ -54,7 +54,7 @@ function resizeImage(file, max = 800) {
       const c = document.createElement("canvas");
       c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
       c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
-      resolve(c.toDataURL("image/jpeg", 0.72));
+      c.toBlob(b => b ? resolve(b) : reject(new Error("Image conversion failed")), "image/jpeg", quality);
       URL.revokeObjectURL(img.src);
     };
     img.onerror = reject;
@@ -82,9 +82,15 @@ document.addEventListener("DOMContentLoaded", () => {
   $("input[name=photo]").addEventListener("change", async e => {
     const file = e.target.files[0]; if (!file) return;
     try {
-      photoData = await resizeImage(file);
+      let full = await resizeToBlob(file, 800, 0.7);
+      if (full.size > 280 * 1024) full = await resizeToBlob(file, 800, 0.5);
+      if (full.size > 280 * 1024) { toast("Photo is too large — try another one"); return; }
+      const thumb = await resizeToBlob(file, 400, 0.7);
+      photoBlobs = { full, thumb };
+      if (photoPreview) URL.revokeObjectURL(photoPreview);
+      photoPreview = URL.createObjectURL(full);
       const old = $("#photoDrop img"); if (old) old.remove();
-      const img = document.createElement("img"); img.src = photoData; img.alt = "Selected photo";
+      const img = document.createElement("img"); img.src = photoPreview; img.alt = "Selected photo";
       $("#photoDrop").prepend(img);
       updatePreview();
     } catch (err) { toast("Couldn't read that image"); }
@@ -100,16 +106,17 @@ document.addEventListener("DOMContentLoaded", () => {
     } catch (err) { toast("Couldn't get your location — click on the map instead"); }
   });
 
-  $("#postForm").addEventListener("submit", e => {
+  $("#postForm").addEventListener("submit", async e => {
     e.preventDefault();
     if (!Auth.isSignedIn()) { toast("Sign in before publishing a listing"); openAuth(); return; }
     const d = formData();
-    if (!d.title) { toast("Please add a title"); $("[name=title]").focus(); return; }
+    if (d.title.length < 3) { toast("Title needs at least 3 characters"); $("[name=title]").focus(); return; }
     if (!(d.weightKg > 0)) { toast("Please add an approximate weight"); $("[name=weightKg]").focus(); return; }
 
-    let listing;
-    try { listing = Store.addListing(d); }
-    catch (err) { toast("Storage is full — try a smaller photo"); return; }
+    const btn = e.submitter || $("#postForm button[type=submit]");
+    btn.disabled = true; btn.textContent = "Publishing…";
+    try { await Store.addListing(d, photoBlobs); }
+    catch (err) { toast(err.message || "Couldn't publish — please try again"); btn.disabled = false; btn.textContent = "Publish listing"; return; }
     refreshChrome();
 
     openModal(`
@@ -120,9 +127,11 @@ document.addEventListener("DOMContentLoaded", () => {
         <a class="btn ghost" href="marketplace.html">View marketplace</a>
         <a class="btn primary" href="messages.html">Open messages</a>
       </div>`);
-    $("#postForm").reset(); photoData = null;
+    $("#postForm").reset(); photoBlobs = null;
+    if (photoPreview) { URL.revokeObjectURL(photoPreview); photoPreview = null; }
     const img = $("#photoDrop img"); if (img) img.remove();
     $("input[name=category][value=" + startCat + "]").checked = true;
     updatePreview();
+    btn.disabled = false; btn.textContent = "Publish listing";
   });
 });

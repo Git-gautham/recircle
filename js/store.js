@@ -1,223 +1,191 @@
-/* =========================================================
-   ReCircle — data store (browser localStorage)
-   ---------------------------------------------------------
-   No server needed: all data is saved in the visitor's
-   browser. To move to a real backend later, keep these
-   function names and change only their insides.
-   ========================================================= */
+/* ReCircle — shared Supabase data store with a small local UI cache. */
 
 const STORE_KEY = "recircle_v2";
+const BUCKET = "listing-images";
+const PUBLIC_TTL = 60 * 1000;
+const EXCHANGES_TTL = 5 * 60 * 1000;
+const LISTING_COLUMNS = "id, owner_id, kind, category, title, description, qty, unit, weight_kg, condition, price, place, lat, lng, image, thumb, status, created_at";
+const CONV_COLUMNS = "id, listing_id, owner_id, participant_id, owner_read_at, participant_read_at, created_at";
+const MSG_COLUMNS = "id, conversation_id, sender_id, body, created_at";
 let ME = "me";
 
 const Store = (() => {
   let state = null;
-
-  function monthsAgoDate(m, salt) {
-    const d = new Date();
-    d.setDate(1);
-    d.setMonth(d.getMonth() - m);
-    d.setDate(2 + (salt * 7) % 25);
-    if (d > new Date()) d.setTime(Date.now() - (salt % 5 + 1) * D);
-    return d.getTime();
-  }
-
-  function seed() {
-    return {
-      version: 2,
-      user: {
-        id: ME, name: "Guest User", role: "individual",
-        place: DEFAULT_CENTER.place, lat: DEFAULT_CENTER.lat, lng: DEFAULT_CENTER.lng
-      },
-      users: [],
-      listings: [],
-      conversations: [],
-      history: []
-    };
-  }
-
-  function save() {
-    try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
-    catch (e) { console.warn("Could not save to localStorage", e); }
-  }
-
-  function load() {
+  const seed = () => ({
+    version: 2, production: true, user: { id: ME, name: "Guest User", role: "individual",
+      place: DEFAULT_CENTER.place, lat: DEFAULT_CENTER.lat, lng: DEFAULT_CENTER.lng },
+    users: [], listings: [], remoteListings: [], remoteUsers: [], conversations: [], history: []
+  });
+  const save = () => { try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) { console.warn("Could not save local cache", e); } };
+  const load = () => {
     if (state) return state;
-    try {
-      const raw = localStorage.getItem(STORE_KEY);
-      state = raw ? JSON.parse(raw) : null;
-    } catch (e) { state = null; }
-    if (!state || state.version !== 2) { state = seed(); save(); }
+    try { state = JSON.parse(localStorage.getItem(STORE_KEY)); } catch (e) { state = null; }
+    if (!state || state.version !== 2 || state.production !== true) { state = seed(); save(); }
     return state;
-  }
-
-  const uid = p => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  };
   const remote = () => typeof Auth !== "undefined" && Auth.isSignedIn() && typeof supabaseClient !== "undefined";
-  const remoteId = id => typeof id === "string" && /^[0-9a-f-]{36}$/i.test(id);
+  const isUuid = id => typeof id === "string" && /^[0-9a-f-]{36}$/i.test(id);
   const remoteListing = row => ({
     id: row.id, ownerId: row.owner_id, kind: row.kind, category: row.category,
-    title: row.title, desc: row.description, qty: row.qty, unit: row.unit,
-    weightKg: row.weight_kg, condition: row.condition, price: row.price,
-    place: row.place, lat: row.lat, lng: row.lng, image: row.image,
+    title: row.title, desc: row.description, qty: Number(row.qty), unit: row.unit,
+    weightKg: Number(row.weight_kg), condition: row.condition, price: Number(row.price),
+    place: row.place, lat: row.lat, lng: row.lng, image: row.image, thumb: row.thumb,
     status: row.status, createdAt: new Date(row.created_at).getTime()
   });
+  async function uploadListingPhotos(full, thumb) {
+    const base = `${Auth.user().id}/${crypto.randomUUID()}`;
+    const opts = { contentType: "image/jpeg", cacheControl: "31536000", upsert: false };
+    const bucket = supabaseClient.storage.from(BUCKET);
+    const a = await bucket.upload(base + ".jpg", full, opts);
+    if (a.error) throw a.error;
+    const b = await bucket.upload(base + "_thumb.jpg", thumb, opts);
+    if (b.error) { await bucket.remove([base + ".jpg"]); throw b.error; }
+    return { image: bucket.getPublicUrl(base + ".jpg").data.publicUrl, thumb: bucket.getPublicUrl(base + "_thumb.jpg").data.publicUrl };
+  }
+  function storagePath(url) {
+    const marker = `/storage/v1/object/public/${BUCKET}/`;
+    const i = typeof url === "string" ? url.indexOf(marker) : -1;
+    return i < 0 ? null : decodeURIComponent(url.slice(i + marker.length));
+  }
+  async function removeListingPhotos(urls) {
+    const paths = urls.map(storagePath).filter(Boolean);
+    if (paths.length) await supabaseClient.storage.from(BUCKET).remove(paths);
+  }
 
   return {
-    async sync() {
-      if (!remote()) return;
-      const [listingResult, profileResult] = await Promise.all([
-        supabaseClient.from("listings").select("*").order("created_at", { ascending: false }),
-        supabaseClient.from("profiles").select("id, display_name, role, place, lat, lng")
-      ]);
-      if (listingResult.error) throw listingResult.error;
-      if (profileResult.error) throw profileResult.error;
-      const s = load();
-      s.remoteListings = listingResult.data.map(remoteListing);
-      s.remoteUsers = profileResult.data.map(p => ({
-        id: p.id, name: p.display_name, role: p.role, place: p.place, lat: p.lat, lng: p.lng
-      }));
-      save();
-      document.dispatchEvent(new CustomEvent("listingschange"));
-      const conversations = await supabaseClient.from("conversations").select("*");
-      if (conversations.error) throw conversations.error;
-      const messages = await supabaseClient.from("messages").select("*").order("created_at");
-      if (messages.error) throw messages.error;
-      const currentId = Auth.user().id;
-      const remoteConversations = conversations.data.map(c => ({
-        id: c.id, listingId: c.listing_id,
-        otherId: c.owner_id === currentId ? c.participant_id : c.owner_id,
-        messages: messages.data.filter(m => m.conversation_id === c.id).map(m => ({
-          from: m.sender_id, text: m.body, ts: new Date(m.created_at).getTime()
-        })), unread: 0
-      }));
-      s.conversations = [...s.conversations.filter(c => !remoteId(c.id)), ...remoteConversations];
+    async loadProfiles(ids) {
+      if (!ids.length) return;
+      const s = load(), known = new Set((s.remoteUsers || []).map(u => u.id));
+      const missing = [...new Set(ids)].filter(id => id && !known.has(id));
+      if (!missing.length) return;
+      const { data, error } = await supabaseClient.from("profiles").select("id, display_name, role, place").in("id", missing);
+      if (error) throw error;
+      s.remoteUsers = [...(s.remoteUsers || []), ...data.map(p => ({ id: p.id, name: p.display_name, role: p.role, place: p.place }))];
       save();
     },
-    /* ---------- user ---------- */
+    async loadPublic(force = false) {
+      const s = load();
+      if (!force && s.publicLoadedAt && Date.now() - s.publicLoadedAt < PUBLIC_TTL) return;
+      const { data, error } = await supabaseClient.from("listings").select(LISTING_COLUMNS).order("created_at", { ascending: false }).limit(200);
+      if (error) throw error;
+      s.remoteListings = data.map(remoteListing); s.publicLoadedAt = Date.now(); save();
+      await this.loadProfiles(data.map(r => r.owner_id));
+    },
+    async loadExchanges(force = false) {
+      const s = load();
+      if (!force && s.exchangesLoadedAt && Date.now() - s.exchangesLoadedAt < EXCHANGES_TTL) return;
+      const { data, error } = await supabaseClient.from("exchanges").select("id, listing_id, title, category, weight_kg, from_id, to_id, created_at").order("created_at", { ascending: false }).limit(1000);
+      if (error) throw error;
+      s.history = data.map(h => ({ id: h.id, listingId: h.listing_id, title: h.title, category: h.category, weightKg: Number(h.weight_kg), fromId: h.from_id, toId: h.to_id, date: new Date(h.created_at).getTime() }));
+      s.exchangesLoadedAt = Date.now(); save();
+      await this.loadProfiles(data.flatMap(h => [h.from_id, h.to_id]));
+    },
+    async loadPrivate() {
+      if (!remote()) return;
+      const s = load(), me = Auth.user().id;
+      if (s.privateUser !== me) { s.conversations = []; s.lastMsgAt = null; s.privateUser = me; }
+      const convs = await supabaseClient.from("conversations").select(CONV_COLUMNS);
+      if (convs.error) throw convs.error;
+      let query = supabaseClient.from("messages").select(MSG_COLUMNS).order("created_at", { ascending: true }).limit(1000);
+      if (s.lastMsgAt) query = query.gt("created_at", s.lastMsgAt);
+      const msgs = await query;
+      if (msgs.error) throw msgs.error;
+      const old = new Map(s.conversations.map(c => [c.id, c]));
+      s.conversations = convs.data.map(c => {
+        const prev = old.get(c.id), mine = c.owner_id === me;
+        return { id: c.id, listingId: c.listing_id, otherId: mine ? c.participant_id : c.owner_id,
+          readAt: new Date(mine ? c.owner_read_at : c.participant_read_at).getTime(),
+          messages: prev ? prev.messages : [], unread: 0 };
+      });
+      msgs.data.forEach(m => this.receiveMessage(m, false));
+      if (msgs.data.length) s.lastMsgAt = msgs.data[msgs.data.length - 1].created_at;
+      s.conversations.forEach(c => { c.unread = c.messages.filter(m => m.from !== me && m.ts > c.readAt).length; });
+      save(); await this.loadProfiles(s.conversations.map(c => c.otherId));
+    },
     me() { return load().user; },
     saveMe(patch) { Object.assign(load().user, patch); save(); },
     userById(id) {
       const s = load();
       if (id === ME) return s.user;
-      const remoteUser = (s.remoteUsers || []).find(u => u.id === id);
-      if (remoteUser) return remoteUser;
-      return s.users.find(u => u.id === id) || { id, name: "Unknown", role: "individual" };
+      return (s.remoteUsers || []).find(u => u.id === id) || { id, name: "Unknown", role: "individual" };
     },
-
-    /* ---------- listings ---------- */
     listings() { return [...load().listings, ...(load().remoteListings || [])].sort((a, b) => b.createdAt - a.createdAt); },
     listing(id) { return this.listings().find(l => l.id === id); },
-    addListing(data) {
-      const ownerId = remote() ? Auth.user().id : ME;
-      const l = { id: uid("l"), status: "available", createdAt: Date.now(), ownerId, ...data };
-      load().listings.push(l); save();
-      if (remote()) {
-        supabaseClient.from("listings").insert({
-          owner_id: ownerId, kind: l.kind, category: l.category, title: l.title,
-          description: l.desc, qty: l.qty, unit: l.unit, weight_kg: l.weightKg,
-          condition: l.condition, price: l.price, place: l.place, lat: l.lat, lng: l.lng,
-          image: l.image
-        }).select().single().then(({ data: row, error }) => {
-          if (error) { console.error("Could not publish listing", error); toast("Listing saved locally but could not be shared"); return; }
-          const s = load();
-          s.listings = s.listings.filter(x => x.id !== l.id);
-          s.remoteListings = [...(s.remoteListings || []), remoteListing(row)];
-          save(); document.dispatchEvent(new CustomEvent("listingschange"));
-        });
-      }
-      return l;
+    async addListing(data, photo) {
+      if (!remote()) throw new Error("Please sign in first");
+      let urls = { image: null, thumb: null };
+      if (photo) urls = await uploadListingPhotos(photo.full, photo.thumb);
+      const result = await supabaseClient.from("listings").insert({
+        owner_id: Auth.user().id, kind: data.kind, category: data.category, title: data.title,
+        description: data.desc, qty: data.qty, unit: data.unit, weight_kg: data.weightKg,
+        condition: data.condition, price: data.price, place: data.place, lat: data.lat, lng: data.lng,
+        image: urls.image, thumb: urls.thumb
+      }).select(LISTING_COLUMNS).single();
+      if (result.error) { await removeListingPhotos([urls.image, urls.thumb]); throw result.error; }
+      const l = remoteListing(result.data), s = load();
+      s.remoteListings = [l, ...(s.remoteListings || [])]; save();
+      document.dispatchEvent(new CustomEvent("listingschange")); return l;
     },
-    updateListing(id, patch) {
-      const l = this.listing(id); if (!l) return;
-      Object.assign(l, patch); save();
-      if (remote() && remoteId(id)) {
-        const row = {};
-        if (patch.status) row.status = patch.status;
-        if (Object.keys(row).length) supabaseClient.from("listings").update(row).eq("id", id)
-          .then(({ error }) => { if (error) console.error("Could not update listing", error); });
-      }
-      return l;
+    async updateListing(id, patch) {
+      const row = {}; if (patch.status) row.status = patch.status;
+      const { error } = await supabaseClient.from("listings").update(row).eq("id", id);
+      if (error) throw error;
+      const l = this.listing(id); if (l) Object.assign(l, patch); save(); return l;
     },
-    deleteListing(id) {
-      const s = load();
-      s.listings = s.listings.filter(l => l.id !== id);
-      s.remoteListings = (s.remoteListings || []).filter(l => l.id !== id);
-      s.conversations = s.conversations.filter(c => c.listingId !== id);
-      if (remote() && remoteId(id)) supabaseClient.from("listings").delete().eq("id", id)
-        .then(({ error }) => { if (error) console.error("Could not delete listing", error); });
-      save();
+    async deleteListing(id) {
+      const l = this.listing(id), { error } = await supabaseClient.from("listings").delete().eq("id", id);
+      if (error) throw error;
+      if (l) await removeListingPhotos([l.image, l.thumb]);
+      const s = load(); s.remoteListings = (s.remoteListings || []).filter(x => x.id !== id);
+      s.conversations = s.conversations.filter(c => c.listingId !== id); save();
     },
-
-    /* ---------- conversations ---------- */
-    conversations() {
-      return load().conversations.slice().sort((a, b) => lastTs(b) - lastTs(a));
-    },
+    conversations() { return load().conversations.slice().sort((a, b) => lastTs(b) - lastTs(a)); },
     conversation(id) { return load().conversations.find(c => c.id === id); },
-    /* other = the person I'm talking to about this listing */
-    openConversation(listingId, otherId) {
-      const s = load();
-      const l = this.listing(listingId);
-      otherId = otherId || l.ownerId;
-      let c = s.conversations.find(c => c.listingId === listingId && c.otherId === otherId);
-      if (!c) {
-        c = { id: remote() && remoteId(listingId) ? crypto.randomUUID() : uid("c"), listingId, otherId, messages: [], unread: 0 };
-        s.conversations.push(c); save();
-        if (remote() && remoteId(listingId) && remoteId(otherId)) {
-          supabaseClient.from("conversations").insert({
-            id: c.id, listing_id: listingId,
-            owner_id: l.ownerId, participant_id: Auth.user().id
-          }).then(({ error }) => { if (error && error.code !== "23505") console.error("Could not create conversation", error); });
-        }
+    async openConversation(listingId) {
+      if (!remote()) throw new Error("Please sign in to message");
+      const me = Auth.user().id, l = this.listing(listingId);
+      if (!l) throw new Error("Listing not found");
+      if (l.ownerId === me) throw new Error("This is your own listing");
+      let result = await supabaseClient.from("conversations").select("id").eq("listing_id", listingId).eq("participant_id", me).maybeSingle();
+      if (result.error) throw result.error;
+      if (!result.data) {
+        result = await supabaseClient.from("conversations").insert({ listing_id: listingId, owner_id: l.ownerId, participant_id: me }).select("id").single();
+        if (result.error) throw result.error;
       }
-      return c;
+      await this.loadPrivate(); return this.conversation(result.data.id);
     },
-    addMessage(convId, from, text) {
-      const c = this.conversation(convId); if (!c) return;
-      c.messages.push({ from, text, ts: Date.now() });
-      if (from !== ME) c.unread = (c.unread || 0) + 1;
-      save();
-      if (remote() && remoteId(convId) && from === Auth.user().id) {
-        supabaseClient.from("messages").insert({
-          conversation_id: convId, sender_id: from, body: text
-        }).then(({ error }) => {
-          if (error) console.error("Could not send message", error);
-        });
-      }
-      return c;
+    async sendMessage(convId, text) {
+      const result = await supabaseClient.from("messages").insert({ conversation_id: convId, sender_id: Auth.user().id, body: text }).select(MSG_COLUMNS).single();
+      if (result.error) throw result.error; this.receiveMessage(result.data);
+    },
+    receiveMessage(row, persist = true) {
+      const c = this.conversation(row.conversation_id);
+      if (!c || c.messages.some(m => m.id === row.id)) return false;
+      const ts = new Date(row.created_at).getTime();
+      c.messages.push({ id: row.id, from: row.sender_id, text: row.body, ts });
+      if (row.sender_id !== ME && ts > (c.readAt || 0)) c.unread = (c.unread || 0) + 1;
+      const s = load(); if (!s.lastMsgAt || row.created_at > s.lastMsgAt) s.lastMsgAt = row.created_at;
+      if (persist) save(); return true;
     },
     markRead(convId) {
-      const c = this.conversation(convId);
-      if (c && c.unread) { c.unread = 0; save(); }
+      const c = this.conversation(convId); if (!c) return;
+      c.unread = 0; c.readAt = Date.now(); save();
+      if (remote()) supabaseClient.rpc("mark_conversation_read", { p_conversation: convId }).then(({ error }) => { if (error) console.error("mark read failed", error); });
     },
-    unreadCount() { return load().conversations.reduce((n, c) => n + (c.unread || 0), 0); },
-
-    /* ---------- exchanges ---------- */
+    async completeExchange(convId) {
+      const result = await supabaseClient.rpc("complete_exchange", { p_conversation: convId });
+      if (result.error) throw result.error;
+      const l = this.listing(result.data.listing_id); if (l) l.status = "exchanged";
+      load().exchangesLoadedAt = 0; save();
+      document.dispatchEvent(new CustomEvent("listingschange")); return result.data;
+    },
     history() { return load().history.slice().sort((a, b) => b.date - a.date); },
-    completeExchange(convId) {
-      const c = this.conversation(convId); if (!c) return null;
-      const l = this.listing(c.listingId); if (!l) return null;
-      /* Who gives, who receives */
-      const owner = l.ownerId, other = c.otherId === owner ? ME : c.otherId;
-      const giver = l.kind === "offer" ? owner : other;
-      const taker = l.kind === "offer" ? other : owner;
-      const rec = {
-        id: uid("h"), listingId: l.id, title: l.title, category: l.category,
-        weightKg: Number(l.weightKg) || 0, fromId: giver, toId: taker, date: Date.now()
-      };
-      load().history.push(rec);
-      l.status = "exchanged";
-      c.exchangeId = rec.id;
-      c.messages.push({ from: "system", text: "Exchange completed — " + rec.weightKg + " kg kept out of landfill ♻️", ts: Date.now() });
-      save(); return rec;
-    },
-
-    /* ---------- utilities ---------- */
+    unreadCount() { return load().conversations.reduce((n, c) => n + (c.unread || 0), 0); },
     reset() { localStorage.removeItem(STORE_KEY); state = null; load(); }
   };
-
   function lastTs(c) { return c.messages.length ? c.messages[c.messages.length - 1].ts : 0; }
 })();
 
-/* Estimated CO2e avoided for an exchange (kg) */
 function co2For(category, kg) {
   const c = CATEGORIES[category] || CATEGORIES.other;
   return (Number(kg) || 0) * c.co2;

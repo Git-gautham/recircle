@@ -24,8 +24,9 @@ function openListing(id) {
   const matches = findMatches(l);
   const co2 = co2For(l.category, l.weightKg);
 
-  const media = l.image
-    ? `<img src="${l.image}" alt="${esc(l.title)}">`
+  const image = safeImageUrl(l.image);
+  const media = image
+    ? `<img src="${esc(image)}" alt="${esc(l.title)}">`
     : `<span aria-hidden="true">${cat.icon}</span>`;
 
   const actions = mine
@@ -34,7 +35,8 @@ function openListing(id) {
        <a class="btn primary" href="messages.html">View messages</a>`
     : l.status === "exchanged"
       ? `<span class="muted">This item has already found a new home ♻️</span>`
-      : `<button class="btn primary" data-act="chat">💬 ${l.kind === "wanted" ? "I have this" : "Message " + esc(owner.name.split(" ")[0])}</button>`;
+      : `<button class="btn primary" data-act="chat">💬 ${l.kind === "wanted" ? "I have this" : "Message " + esc(owner.name.split(" ")[0])}</button>
+         <button class="btn ghost" data-act="report">⚑ Report</button>`;
 
   openModal(`
     <div class="card-media detail-media" style="--cat:${cat.color}">
@@ -78,16 +80,36 @@ function openListing(id) {
         const open = e.target.closest("[data-open]")?.dataset.open;
         if (open) return openListing(open);
         if (act === "chat") {
-          const c = Store.openConversation(l.id);
-          location.href = "messages.html?c=" + c.id;
+          if (!Auth.isSignedIn()) { closeModal(); openAuth(); return; }
+          const btn = e.target.closest("[data-act]"); btn.disabled = true;
+          Store.openConversation(l.id).then(c => { location.href = "messages.html?c=" + c.id; })
+            .catch(err => { toast(err.message || "Couldn't start the chat"); btn.disabled = false; });
+        }
+        if (act === "report") {
+          if (!Auth.isSignedIn()) { closeModal(); openAuth(); return; }
+          openModal(`<h2>Report this listing</h2><form id="reportForm" class="form">
+            <label>What's wrong?<textarea name="reason" required minlength="3" maxlength="300"></textarea></label>
+            <div class="form-actions"><button class="btn primary">Send report</button></div></form>`, {
+            onOpen(m2) {
+              $("#reportForm", m2).addEventListener("submit", async ev => {
+                ev.preventDefault();
+                const reason = new FormData(ev.target).get("reason").trim();
+                const result = await supabaseClient.from("reports").insert({ listing_id: l.id, reason });
+                toast(result.error ? (result.error.code === "23505" ? "You already reported this" : result.error.message) : "Thanks — we'll review it");
+                if (!result.error) closeModal();
+              });
+            }
+          });
         }
         if (act === "toggle") {
-          Store.updateListing(l.id, { status: l.status === "reserved" ? "available" : "reserved" });
-          toast("Status updated"); closeModal(); document.dispatchEvent(new CustomEvent("listingschange"));
+          Store.updateListing(l.id, { status: l.status === "reserved" ? "available" : "reserved" })
+            .then(() => { toast("Status updated"); closeModal(); document.dispatchEvent(new CustomEvent("listingschange")); })
+            .catch(err => toast(err.message || "Couldn't update"));
         }
         if (act === "delete" && confirm("Delete this listing?")) {
-          Store.deleteListing(l.id); toast("Listing deleted"); closeModal();
-          document.dispatchEvent(new CustomEvent("listingschange"));
+          Store.deleteListing(l.id).then(() => {
+            toast("Listing deleted"); closeModal(); document.dispatchEvent(new CustomEvent("listingschange"));
+          }).catch(err => toast(err.message || "Couldn't delete"));
         }
       });
       m.addEventListener("keydown", e => {

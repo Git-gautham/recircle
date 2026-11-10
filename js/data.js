@@ -8,6 +8,7 @@
 
 /* Default map centre: Perinthalmanna, Malappuram (Kerala) */
 const DEFAULT_CENTER = { lat: 10.9765, lng: 76.2260, place: "Perinthalmanna" };
+const DEMO_MODE = false;
 
 /* co2 = kg CO2e avoided per kg of material reused instead of landfilled.
    These are rounded, indicative figures for a student demo —

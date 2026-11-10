@@ -53,7 +53,10 @@ function drawMap(items) {
       ${catBadge(l.category)}
       <h4>${esc(l.title)}</h4>
       <div class="small muted">${l.kind === "wanted" ? "Wanted" : "Available"} · ${priceLabel(l)} · ${fmtKm(l.d)}</div>
-      <button class="btn primary sm" style="margin-top:8px" onclick="openListing('${l.id}')">View details</button>`);
+      <button class="btn primary sm" style="margin-top:8px" data-open-listing="${esc(l.id)}">View details</button>`);
+    m.on("popupopen", e => {
+      e.popup.getElement().querySelector("[data-open-listing]")?.addEventListener("click", () => openListing(l.id));
+    });
     markerLayer.addLayer(m);
   });
   const pts = items.map(l => [l.lat, l.lng]).concat([[here.lat, here.lng]]);

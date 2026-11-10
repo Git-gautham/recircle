@@ -1,0 +1,9 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reset password — ReCircle</title><link rel="icon" href="assets/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="css/style.css"></head>
+<body><main class="wrap" style="max-width:480px"><div class="page-head"><h1>Choose a new password</h1></div>
+<form id="resetForm" class="card form" style="padding:24px"><label>New password<input name="password" type="password" minlength="8" required autocomplete="new-password"></label>
+<button class="btn primary">Save password</button><p class="muted small" id="resetMsg" role="alert"></p></form></main>
+<script src="vendor/supabase/supabase.js"></script><script src="js/data.js"></script><script src="js/store.js"></script><script src="js/supabase.js"></script><script src="js/ui.js"></script>
+<script>document.addEventListener("DOMContentLoaded",()=>{$("#resetForm").addEventListener("submit",async e=>{e.preventDefault();const password=new FormData(e.target).get("password");const {error}=await supabaseClient.auth.updateUser({password});$("#resetMsg").textContent=error?error.message+" — the link may have expired; request a new one.":"Password updated. You can now use the site.";if(!error)setTimeout(()=>location.href="index.html",1500);});});</script>
+</body></html>

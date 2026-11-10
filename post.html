@@ -34,7 +34,7 @@
       </fieldset>
 
       <label>Title
-        <input name="title" required maxlength="70" placeholder="e.g. Flattened cardboard boxes (20 pcs)">
+        <input name="title" required minlength="3" maxlength="70" placeholder="e.g. Flattened cardboard boxes (20 pcs)">
       </label>
 
       <label>Description
@@ -56,7 +56,7 @@
         <label>Price in ₹ <span class="hint">0 = free</span><input name="price" type="number" min="0" step="1" value="0"></label>
       </div>
 
-      <label>Photo <span class="hint">optional — stays on this device</span>
+      <label>Photo <span class="hint">optional — max one photo</span>
         <span class="photo-drop" id="photoDrop">
           <span>📷 <b>Tap to add a photo</b><br><span class="small">JPG or PNG</span></span>
           <input type="file" name="photo" accept="image/*">
@@ -70,6 +70,7 @@
           <button type="button" class="btn ghost" id="geoBtn">📍 Use my location</button>
         </div>
         <div id="pickMap"></div>
+        <p class="muted small" style="margin-top:8px">🔒 Only an approximate area (about 100 m) is shown publicly. Share the exact pickup address in chat.</p>
       </div>
 
       <div class="form-actions">
@@ -95,7 +96,7 @@
 <script src="vendor/leaflet/leaflet.js"></script>
 <script src="js/data.js"></script>
 <script src="js/store.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="vendor/supabase/supabase.js"></script>
 <script src="js/supabase.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/detail.js"></script>

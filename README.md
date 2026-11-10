@@ -17,7 +17,7 @@ Built for **TERRACODE 2026** — theme *Green Tomorrow: Building a Sustainable F
 | Recycling impact dashboard (kg diverted, CO₂e avoided, charts, leaderboard) | `impact.html` |
 | **Unique:** *Circular matches* — every listing shows nearby people on the other side of the loop (offers ↔ wanted) | listing popup |
 
-Also: dark mode, mobile layout, editable profile, reset-demo button.
+Also: dark mode, mobile layout, editable profile, shared Supabase data.
 
 ## 100% free & open source
 
@@ -51,8 +51,8 @@ recircle/
 ├── impact.html         Impact dashboard
 ├── css/style.css       All styles (colours at the top in :root)
 ├── js/
-│   ├── data.js         Seed data, categories, CO₂ factors  ← edit demo content here
-│   ├── store.js        Saves everything in localStorage
+│   ├── data.js         Categories, CO₂ factors and production mode
+│   ├── store.js        Supabase data access with a local UI cache
 │   ├── ui.js           Navbar, footer, shared helpers
 │   ├── detail.js       Listing popup + circular matches
 │   └── home.js, marketplace.js, post.js, messages.js, history.js, impact.js
@@ -78,29 +78,25 @@ The site now uses Supabase Authentication for account creation, sign-in, profile
 roles and sign-out. To enable it in a new Supabase project:
 
 1. Open the Supabase SQL Editor.
-2. If you already ran the original schema, run
-   [`supabase/shared-data.sql`](supabase/shared-data.sql). For a new project,
-   [`supabase/schema.sql`](supabase/schema.sql) includes the complete schema.
+2. Run [`supabase/migration-v2.sql`](supabase/migration-v2.sql) after the
+   original schema. It adds shared exchanges, reports, Storage, privacy
+   protections, rate limits and account deletion.
 3. In **Authentication → Providers**, enable Email.
 4. In **Authentication → URL Configuration**, set the **Site URL** to
    `https://git-gautham.github.io/recircle/` and add that same URL under
    **Redirect URLs**.
-5. To brand verification emails, open **Authentication → Emails → Confirm signup**,
-   paste [`supabase/confirm-signup-email.html`](supabase/confirm-signup-email.html)
-   into the email body, and save.
-6. Visit the live site and click **Sign in** in the header.
+5. Visit the live site and click **Sign in** in the header.
 
 The frontend contains only the Supabase publishable key. Never expose a
-`service_role` key in the site. Authenticated listings, conversations and
-messages created after the shared-data migration are stored in Supabase and
-visible according to the RLS policies. The original seed demo data remains
-browser-local.
+`service_role` key in the site. Listings, conversations, messages and
+exchanges are stored in Supabase and visible according to the RLS policies.
+Photos are stored in the `listing-images` Storage bucket.
 
-## Notes on the demo
+## Notes on production data
 
-- New users start with an empty marketplace; authenticated listings and
-  messages are shared through Supabase.
-- Messages are sent between real authenticated accounts.
+- New users start with an empty marketplace. Listings, messages, profiles and
+  exchanges are shared through Supabase after running `supabase/migration-v2.sql`.
+- Messages are sent between real authenticated accounts, with realtime updates.
 - CO₂e numbers are indicative estimates (weight × per-material factor in `js/data.js`).
 - To make it truly multi-user later, keep the function names in `js/store.js` and swap their insides
   for an open-source backend such as Supabase or PocketBase.

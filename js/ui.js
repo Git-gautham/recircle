@@ -22,6 +22,13 @@ function esc(str) {
   return String(str ?? "").replace(/[&<>"']/g, c =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
+function safeImageUrl(url) {
+  try {
+    const u = new URL(url, location.href);
+    return (u.protocol === "blob:" || (u.protocol === "https:" && (u.hostname === "axcpgigdwmhumvcuiqoy.supabase.co" || u.origin === location.origin)))
+      ? u.href : "";
+  } catch (e) { return ""; }
+}
 
 /* Distance between two lat/lng points in km (Haversine formula) */
 function distanceKm(a, b) {
@@ -145,6 +152,7 @@ function renderChrome() {
       </div>
       <div class="footer-links">
         ${NAV_LINKS.map(n => `<a href="${n.href}">${n.label}</a>`).join("")}
+        <a href="privacy.html">Privacy</a>
       </div>
       <div class="footer-meta">
         <p class="muted">Made with open-source tools: Leaflet, OpenStreetMap, Chart.js, Fraunces &amp; DM Sans.</p>
@@ -177,6 +185,7 @@ function refreshChrome() {
 /* ---------- modal ---------- */
 function openModal(html, { onOpen, wide } = {}) {
   closeModal();
+  const opener = document.activeElement;
   const m = document.createElement("div");
   m.className = "modal-backdrop";
   m.innerHTML = `<div class="modal ${wide ? "wide" : ""}" role="dialog" aria-modal="true">
@@ -187,11 +196,21 @@ function openModal(html, { onOpen, wide } = {}) {
   document.addEventListener("keydown", escClose);
   requestAnimationFrame(() => m.classList.add("open"));
   if (onOpen) onOpen(m);
+  const focusables = () => [...m.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')].filter(el => !el.disabled);
+  (focusables()[1] || focusables()[0])?.focus();
+  m.addEventListener("keydown", e => {
+    if (e.key !== "Tab") return;
+    const f = focusables(); if (!f.length) return;
+    if (e.shiftKey && document.activeElement === f[0]) { e.preventDefault(); f[f.length - 1].focus(); }
+    else if (!e.shiftKey && document.activeElement === f[f.length - 1]) { e.preventDefault(); f[0].focus(); }
+  });
+  m._opener = opener;
   return m;
 }
 function closeModal() {
   const m = $(".modal-backdrop");
   if (m) m.remove();
+  m?._opener?.focus?.();
   document.body.classList.remove("no-scroll");
   document.removeEventListener("keydown", escClose);
 }
@@ -217,6 +236,7 @@ function openProfile() {
         <button class="btn primary">Save</button>
       </div>
       <button type="button" class="link-btn" id="signOutBtn">Sign out</button>
+      <button type="button" class="link-btn" id="deleteAccountBtn" style="color:var(--accent)">Delete my account</button>
     </form>`, {
     onOpen(m) {
       $("#geoBtn", m).addEventListener("click", async () => {
@@ -234,6 +254,18 @@ function openProfile() {
         try { await Auth.signOut(); }
         catch (err) { toast(err.message || "Couldn't sign out"); }
       });
+      $("#deleteAccountBtn", m).addEventListener("click", async () => {
+        if (!confirm("Delete your account permanently? Your profile, listings, photos and messages will be removed.")) return;
+        try {
+          const uid = Auth.user().id, bucket = supabaseClient.storage.from("listing-images");
+          const files = await bucket.list(uid, { limit: 100 });
+          if (files.data?.length) await bucket.remove(files.data.map(f => `${uid}/${f.name}`));
+          const result = await supabaseClient.rpc("delete_my_account");
+          if (result.error) throw result.error;
+          await supabaseClient.auth.signOut({ scope: "local" }).catch(() => {});
+          Store.reset(); location.href = "index.html";
+        } catch (err) { toast(err.message || "Couldn't delete account"); }
+      });
     }
   });
 }
@@ -244,18 +276,32 @@ function openAuth() {
     <p class="muted" id="authIntro">Sign in to save your profile and connect with the community.</p>
     <form id="authForm" class="form">
       <label>Email<input name="email" type="email" required autocomplete="email"></label>
-      <label>Password<input name="password" type="password" required minlength="6" autocomplete="current-password"></label>
+      <label>Password<input name="password" type="password" required minlength="8" autocomplete="current-password"></label>
       <label id="authNameWrap" hidden>Name<input name="name" maxlength="40" autocomplete="name"></label>
       <div class="form-actions">
         <button class="btn primary" id="authSubmit">Sign in</button>
         <button class="btn ghost" type="button" id="authToggle">Create account</button>
       </div>
+      <p class="small"><button type="button" class="link-btn" id="forgotBtn">Forgot password?</button> · <button type="button" class="link-btn" id="resendBtn">Resend confirmation</button></p>
+      <p class="muted small">By creating an account you agree to the <a href="privacy.html">privacy policy</a>.</p>
       <p class="muted small" id="authError" role="alert"></p>
     </form>`, {
     onOpen(m) {
       let signup = false;
       const title = $("#authTitle", m), intro = $("#authIntro", m), name = $("#authNameWrap", m);
       const submit = $("#authSubmit", m), toggle = $("#authToggle", m), error = $("#authError", m);
+      $("#forgotBtn", m).addEventListener("click", async () => {
+        const email = $("[name=email]", m).value.trim();
+        if (!email) { error.textContent = "Type your email first."; return; }
+        const result = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo: new URL("reset.html", location.href).href });
+        error.textContent = result.error ? result.error.message : "If that email has an account, a reset link is on its way.";
+      });
+      $("#resendBtn", m).addEventListener("click", async () => {
+        const email = $("[name=email]", m).value.trim();
+        if (!email) { error.textContent = "Type your email first."; return; }
+        const result = await supabaseClient.auth.resend({ type: "signup", email, options: { emailRedirectTo: new URL("./", location.href).href } });
+        error.textContent = result.error ? result.error.message : "Confirmation email sent again.";
+      });
       toggle.addEventListener("click", () => {
         signup = !signup;
         title.textContent = signup ? "Create your ReCircle account" : "Welcome to ReCircle";
@@ -287,8 +333,9 @@ function listingCard(l, from) {
   const owner = Store.userById(l.ownerId);
   const cat = CATEGORIES[l.category] || CATEGORIES.other;
   const dist = from ? fmtKm(distanceKm(from, l)) : "";
-  const media = l.image
-    ? `<img src="${l.image}" alt="" loading="lazy">`
+  const image = safeImageUrl(l.thumb || l.image);
+  const media = image
+    ? `<img src="${esc(image)}" alt="" loading="lazy">`
     : `<span class="card-glyph" aria-hidden="true">${cat.icon}</span>`;
   return `
     <article class="card listing ${l.kind} ${l.status}" data-id="${l.id}" tabindex="0">
@@ -321,10 +368,25 @@ function logoSVG() {
   </svg>`;
 }
 
+let realtimeChannel = null;
+function startRealtime() {
+  if (!Auth.isSignedIn() || realtimeChannel) return;
+  realtimeChannel = supabaseClient.channel("recircle-messages")
+    .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, async ({ new: row }) => {
+      if (Store.conversation(row.conversation_id)) Store.receiveMessage(row);
+      else { try { await Store.loadPrivate(); } catch (e) { console.error(e); } }
+      refreshChrome();
+      document.dispatchEvent(new CustomEvent("messageschange", { detail: row }));
+    }).subscribe();
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
   try { await Auth.init(); }
   catch (err) { console.error("Supabase authentication could not initialize", err); }
-  try { await Store.sync(); }
-  catch (err) { console.error("Shared data could not be loaded", err); toast("Shared listings are temporarily unavailable"); }
   renderChrome();
+  try { await Store.loadPublic(); } catch (err) { console.error(err); toast("Listings are temporarily unavailable"); }
+  try { await Store.loadExchanges(); } catch (err) { console.error(err); }
+  try { await Store.loadPrivate(); } catch (err) { console.error(err); }
+  refreshChrome(); startRealtime();
+  document.dispatchEvent(new CustomEvent("listingschange"));
 });

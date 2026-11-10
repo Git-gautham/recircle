@@ -30,7 +30,7 @@ function renderHome() {
   const h = history[0];
   if (h) {
     const from = Store.userById(h.fromId), to = Store.userById(h.toId);
-    $("#bandQuote").innerHTML = `${CATEGORIES[h.category].icon} ${esc(h.weightKg)} kg of ${esc(h.title.toLowerCase())} went from
+    $("#bandQuote").innerHTML = `${(CATEGORIES[h.category] || CATEGORIES.other).icon} ${esc(h.weightKg)} kg of ${esc(h.title.toLowerCase())} went from
       <strong>${esc(from.name)}</strong> to <strong>${esc(to.name)}</strong> instead of a landfill.
       <footer class="small" style="font-family:var(--font-body);font-style:normal;opacity:.7;margin-top:10px">Latest exchange · ${fmtDate(h.date)}</footer>`;
   }
