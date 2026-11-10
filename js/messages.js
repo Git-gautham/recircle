@@ -93,7 +93,7 @@ function renderChat() {
   $("#chatLayout").classList.add("in-chat");
   const body = $("#chatBody"); body.scrollTop = body.scrollHeight;
 
-  $("#chatForm").addEventListener("submit", e => { e.preventDefault(); send($("#msg").value); });
+  $("#chatForm")?.addEventListener("submit", e => { e.preventDefault(); send($("#msg").value); });
   $$(".quick-replies button").forEach(b => b.addEventListener("click", () => send(b.textContent)));
   $("#backBtn").addEventListener("click", () => { activeId = null; history.replaceState(null, "", "messages.html"); renderAll(); });
   $("#openListing")?.addEventListener("click", () => openListing(l.id));
@@ -137,7 +137,10 @@ function confirmExchange(c, l, other, alreadyConfirmed) {
   });
 }
 
-function renderAll() { renderChat(); renderList(); }
+function renderAll() {
+  renderList();
+  try { renderChat(); } catch (err) { console.error("Chat could not be shown", err); }
+}
 
 function selectConversation(id) {
   activeId = id;
