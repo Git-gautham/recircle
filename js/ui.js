@@ -304,6 +304,18 @@ function openAuth() {
       let signup = false;
       const title = $("#authTitle", m), intro = $("#authIntro", m), name = $("#authNameWrap", m);
       const confirm = $("#authConfirmWrap", m);
+      const passwordConfirm = $("[name=passwordConfirm]", m);
+      function setSignupMode(enabled) {
+        signup = enabled;
+        title.textContent = signup ? "Create your ReCircle account" : "Welcome to ReCircle";
+        intro.textContent = signup ? "Join the local circular-economy community." : "Sign in to save your profile and connect with the community.";
+        name.hidden = !signup; name.style.display = signup ? "" : "none";
+        confirm.hidden = !signup; confirm.style.display = signup ? "" : "none";
+        passwordConfirm.required = signup;
+        $("[name=password]", m).autocomplete = signup ? "new-password" : "current-password";
+        submit.textContent = signup ? "Create account" : "Sign in";
+        toggle.textContent = signup ? "I already have an account" : "Create account";
+      }
       const submit = $("#authSubmit", m), toggle = $("#authToggle", m), error = $("#authError", m);
       $("#forgotBtn", m).addEventListener("click", async () => {
         const email = $("[name=email]", m).value.trim();
@@ -318,16 +330,9 @@ function openAuth() {
         error.textContent = result.error ? result.error.message : "Confirmation email sent again.";
       });
       toggle.addEventListener("click", () => {
-        signup = !signup;
-        title.textContent = signup ? "Create your ReCircle account" : "Welcome to ReCircle";
-        intro.textContent = signup ? "Join the local circular-economy community." : "Sign in to save your profile and connect with the community.";
-        name.hidden = !signup;
-        confirm.hidden = !signup;
-        $("[name=passwordConfirm]", m).required = signup;
-        $("[name=password]", m).autocomplete = signup ? "new-password" : "current-password";
-        submit.textContent = signup ? "Create account" : "Sign in";
-        toggle.textContent = signup ? "I already have an account" : "Create account";
+        setSignupMode(!signup);
       });
+      setSignupMode(false);
       $$(".password-toggle", m).forEach(button => button.addEventListener("click", () => {
         const input = $(`[name="${button.dataset.target}"]`, m);
         const visible = input.type === "text";
