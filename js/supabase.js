@@ -68,7 +68,7 @@ const Auth = (() => {
       password,
       options: {
         data: { display_name: name },
-        emailRedirectTo: new URL("index.html", window.location.href).href
+        emailRedirectTo: new URL("./", window.location.href).href
       }
     });
     if (result.error) throw result.error;
