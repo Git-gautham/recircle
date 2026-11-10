@@ -17,7 +17,7 @@ function renderTimeline() {
   if (!rows.length) {
     $("#timeline").innerHTML = `<li class="empty">
       <span class="big">🌱</span>${view.scope === "me"
-        ? `You haven't completed an exchange yet.<br>Find something in the <a href="marketplace.html">marketplace</a>, chat, then tap “Mark as exchanged”.`
+        ? `You haven't completed an exchange yet.<br>Find something in the <a href="marketplace.html">marketplace</a>, chat, then both participants can confirm the hand-off.`
         : "No exchanges in this category yet."}</li>`;
     return;
   }

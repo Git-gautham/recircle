@@ -449,6 +449,7 @@ legend { font-weight: 600; font-size: .88rem; margin-bottom: 8px; padding: 0; }
 .chat-head { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
 .chat-head .who { flex: 1; min-width: 160px; }
 .chat-head .who strong { display: block; }
+.exchange-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 .back-btn { display: none; }
 .chat-body { flex: 1 1 auto; height: 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; padding: 20px; display: flex; flex-direction: column; gap: 8px; background: var(--paper); }
 .bubble { max-width: 72%; padding: 9px 13px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line); align-self: flex-start; word-wrap: break-word; }

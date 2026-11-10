@@ -136,7 +136,9 @@ create policy "Buyers can start conversations" on public.conversations
 
 alter table public.conversations
   add column if not exists owner_read_at       timestamptz not null default now(),
-  add column if not exists participant_read_at timestamptz not null default now();
+  add column if not exists participant_read_at timestamptz not null default now(),
+  add column if not exists owner_confirmed_at   timestamptz,
+  add column if not exists participant_confirmed_at timestamptz;
 
 create or replace function public.mark_conversation_read(p_conversation uuid)
 returns void language sql security definer set search_path = public as $$
@@ -228,18 +230,20 @@ create policy "Exchanges are public" on public.exchanges for select using (true)
 
 create index if not exists exchanges_created_idx on public.exchanges (created_at desc);
 
--- The listing OWNER confirms the hand-off from the chat.
+-- Both participants confirm the hand-off. The second confirmation completes it.
+drop function if exists public.complete_exchange(uuid);
 create or replace function public.complete_exchange(p_conversation uuid)
-returns public.exchanges
+returns jsonb
 language plpgsql security definer set search_path = public as $$
 declare
   c public.conversations%rowtype;
   l public.listings%rowtype;
   r public.exchanges%rowtype;
+  confirmed_at timestamptz := now();
 begin
-  select * into c from public.conversations where id = p_conversation;
-  if not found or auth.uid() is distinct from c.owner_id then
-    raise exception 'Only the listing owner can confirm the exchange';
+  select * into c from public.conversations where id = p_conversation for update;
+  if not found or auth.uid() not in (c.owner_id, c.participant_id) then
+    raise exception 'Only conversation participants can confirm the exchange';
   end if;
 
   select * into l from public.listings where id = c.listing_id for update;
@@ -250,6 +254,20 @@ begin
     raise exception 'This listing is already marked as exchanged';
   end if;
 
+  update public.conversations
+     set owner_confirmed_at = case when auth.uid() = owner_id then confirmed_at else owner_confirmed_at end,
+         participant_confirmed_at = case when auth.uid() = participant_id then confirmed_at else participant_confirmed_at end
+   where id = c.id
+   returning * into c;
+
+  if c.owner_confirmed_at is null or c.participant_confirmed_at is null then
+    return jsonb_build_object(
+      'completed', false,
+      'confirmed_at', confirmed_at,
+      'listing_id', l.id
+    );
+  end if;
+
   update public.listings set status = 'exchanged' where id = l.id;
 
   insert into public.exchanges (listing_id, conversation_id, title, category, weight_kg, from_id, to_id)
@@ -258,7 +276,22 @@ begin
           case when l.kind = 'offer' then c.participant_id else c.owner_id end)
   returning * into r;
 
-  return r;
+  return jsonb_build_object(
+    'completed', true,
+    'confirmed_at', confirmed_at,
+    'listing_id', l.id,
+    'exchange_id', r.id
+  );
+end;
+$$;
+
+do $$
+begin
+  if not exists (select 1 from pg_publication_tables
+                  where pubname = 'supabase_realtime'
+                    and schemaname = 'public' and tablename = 'conversations') then
+    alter publication supabase_realtime add table public.conversations;
+  end if;
 end;
 $$;
 

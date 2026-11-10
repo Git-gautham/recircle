@@ -5,7 +5,7 @@ const BUCKET = "listing-images";
 const PUBLIC_TTL = 60 * 1000;
 const EXCHANGES_TTL = 5 * 60 * 1000;
 const LISTING_COLUMNS = "id, owner_id, kind, category, title, description, qty, unit, weight_kg, condition, price, place, lat, lng, image, thumb, status, created_at";
-const CONV_COLUMNS = "id, listing_id, owner_id, participant_id, owner_read_at, participant_read_at, created_at";
+const CONV_COLUMNS = "id, listing_id, owner_id, participant_id, owner_read_at, participant_read_at, owner_confirmed_at, participant_confirmed_at, created_at";
 const MSG_COLUMNS = "id, conversation_id, sender_id, body, created_at";
 let ME = "me";
 
@@ -95,6 +95,7 @@ const Store = (() => {
         const prev = old.get(c.id), mine = c.owner_id === me;
         return { id: c.id, listingId: c.listing_id, otherId: mine ? c.participant_id : c.owner_id,
           readAt: new Date(mine ? c.owner_read_at : c.participant_read_at).getTime(),
+          ownerConfirmedAt: c.owner_confirmed_at, participantConfirmedAt: c.participant_confirmed_at,
           messages: prev ? prev.messages : [], unread: 0 };
       });
       msgs.data.forEach(m => this.receiveMessage(m, false));
@@ -183,9 +184,17 @@ const Store = (() => {
     async completeExchange(convId) {
       const result = await supabaseClient.rpc("complete_exchange", { p_conversation: convId });
       if (result.error) throw result.error;
-      const l = this.listing(result.data.listing_id); if (l) l.status = "exchanged";
-      load().exchangesLoadedAt = 0; save();
-      document.dispatchEvent(new CustomEvent("listingschange")); return result.data;
+      const c = this.conversation(convId), me = Auth.user().id;
+      if (c) {
+        if (me === this.listing(c.listingId)?.ownerId) c.ownerConfirmedAt = result.data.confirmed_at;
+        else c.participantConfirmedAt = result.data.confirmed_at;
+      }
+      if (result.data.completed) {
+        const l = this.listing(result.data.listing_id); if (l) l.status = "exchanged";
+        load().exchangesLoadedAt = 0;
+        document.dispatchEvent(new CustomEvent("listingschange"));
+      }
+      save(); return result.data;
     },
     history() { return load().history.slice().sort((a, b) => b.date - a.date); },
     unreadCount() { return load().conversations.reduce((n, c) => n + (c.unread || 0), 0); },

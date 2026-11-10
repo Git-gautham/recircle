@@ -59,6 +59,9 @@ function renderChat() {
   const other = Store.userById(c.otherId);
   const l = Store.listing(c.listingId);
   const done = l && l.status === "exchanged";
+  const isSeller = l && l.ownerId === ME;
+  const confirmedByMe = isSeller ? c.ownerConfirmedAt : c.participantConfirmedAt;
+  const confirmedByOther = isSeller ? c.participantConfirmedAt : c.ownerConfirmedAt;
   const replies = quickReplies(c, l);
 
   box.innerHTML = `
@@ -71,7 +74,10 @@ function renderChat() {
       </div>
       ${l ? (done
         ? `<span class="cat" style="--cat:var(--ok)">✓ Exchanged</span>`
-        : (l.ownerId === ME ? `<button class="btn primary sm" id="doneBtn">✓ Mark as exchanged</button>` : "")) : ""}
+        : `<div class="exchange-actions">
+             <button class="btn primary sm" id="doneBtn" ${confirmedByMe ? "disabled" : ""}>${confirmedByMe ? "✓ Confirmed" : "✓ Confirm exchange"}</button>
+             <span class="small muted">${confirmedByOther ? "The other participant has confirmed." : "Both participants must confirm."}</span>
+           </div>`) : ""}
     </div>
     <div class="chat-body" id="chatBody">
       ${c.messages.map(m => m.from === "system"
@@ -92,7 +98,7 @@ function renderChat() {
   $$(".quick-replies button").forEach(b => b.addEventListener("click", () => send(b.textContent)));
   $("#backBtn").addEventListener("click", () => { activeId = null; history.replaceState(null, "", "messages.html"); renderAll(); });
   $("#openListing")?.addEventListener("click", () => openListing(l.id));
-  $("#doneBtn")?.addEventListener("click", () => confirmExchange(c, l, other));
+  $("#doneBtn")?.addEventListener("click", () => confirmExchange(c, l, other, confirmedByMe));
 }
 
 async function send(text) {
@@ -105,7 +111,8 @@ async function send(text) {
   finally { const i = $("#msg"); if (i) { i.disabled = false; i.focus(); } }
 }
 
-function confirmExchange(c, l, other) {
+function confirmExchange(c, l, other, alreadyConfirmed) {
+  if (alreadyConfirmed) return;
   const co2 = co2For(l.category, l.weightKg);
   openModal(`
     <h2>Confirm exchange</h2>
@@ -114,7 +121,7 @@ function confirmExchange(c, l, other) {
       <div><dt>Weight</dt><dd>${esc(l.weightKg)} kg</dd></div>
       <div><dt>CO₂e avoided</dt><dd>~${co2.toFixed(1)} kg</dd></div>
     </dl>
-    <p class="muted small">This marks the listing as exchanged and adds it to your history and impact dashboard.</p>
+    <p class="muted small">Both you and ${esc(other.name)} must confirm. The listing will be marked exchanged and added to impact/history only after both confirmations.</p>
     <div class="form-actions">
       <button class="btn ghost" id="noBtn">Not yet</button>
       <button class="btn primary" id="yesBtn">Yes, it's done ♻️</button>
@@ -124,7 +131,7 @@ function confirmExchange(c, l, other) {
       $("#yesBtn", m).addEventListener("click", () => {
         Store.completeExchange(c.id).then(() => {
           closeModal(); renderAll();
-          toast(`Nice! ${l.weightKg} kg kept out of landfill 🌱`);
+          toast(`Your confirmation was recorded. ${c.ownerConfirmedAt && c.participantConfirmedAt ? `Nice! ${l.weightKg} kg kept out of landfill 🌱` : "Waiting for the other participant."}`);
         }).catch(err => toast(err.message || "Couldn't complete the exchange"));
       });
     }
