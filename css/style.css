@@ -354,6 +354,7 @@ p { margin: 0 0 1em; }
 
 /* ---------- forms ---------- */
 .form { display: grid; gap: 14px; }
+[hidden] { display: none !important; }
 .form label { display: grid; gap: 6px; font-weight: 600; font-size: .88rem; }
 .form .hint { font-weight: 400; color: var(--ink-2); font-size: .8rem; }
 input, select, textarea {
