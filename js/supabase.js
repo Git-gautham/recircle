@@ -63,7 +63,14 @@ const Auth = (() => {
   }
 
   async function signUp(email, password, name) {
-    const result = await supabaseClient.auth.signUp({ email, password, options: { data: { display_name: name } } });
+    const result = await supabaseClient.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { display_name: name },
+        emailRedirectTo: new URL("index.html", window.location.href).href
+      }
+    });
     if (result.error) throw result.error;
     if (result.data.session) {
       session = result.data.session;

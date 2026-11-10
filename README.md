@@ -81,7 +81,10 @@ roles and sign-out. To enable it in a new Supabase project:
 2. Run [`supabase/schema.sql`](supabase/schema.sql) to create the profiles table,
    automatic profile creation trigger and Row Level Security policies.
 3. In **Authentication → Providers**, enable Email.
-4. Visit the live site and click **Sign in** in the header.
+4. In **Authentication → URL Configuration**, set the **Site URL** to
+   `https://git-gautham.github.io/recircle/` and add that same URL under
+   **Redirect URLs**.
+5. Visit the live site and click **Sign in** in the header.
 
 The frontend contains only the Supabase publishable key. Never expose a
 `service_role` key in the site. The current marketplace demo data remains
