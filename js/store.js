@@ -90,10 +90,11 @@ const Store = (() => {
       if (msgs.error) throw msgs.error;
       const old = new Map(s.conversations.map(c => [c.id, c]));
       s.conversations = convs.data.map(c => {
-        const mine = c.owner_id === me;
+        const prev = old.get(c.id), mine = c.owner_id === me;
+        const serverReadAt = new Date(mine ? c.owner_read_at : c.participant_read_at).getTime();
         return { id: c.id, listingId: c.listing_id, ownerId: c.owner_id, participantId: c.participant_id,
           otherId: mine ? c.participant_id : c.owner_id,
-          readAt: new Date(mine ? c.owner_read_at : c.participant_read_at).getTime(),
+          readAt: Math.max(serverReadAt, prev?.readAt || 0),
           ownerConfirmedAt: c.owner_confirmed_at, participantConfirmedAt: c.participant_confirmed_at,
           messages: [], unread: 0 };
       });
