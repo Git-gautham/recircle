@@ -86,9 +86,7 @@ const Store = (() => {
       if (s.privateUser !== me) { s.conversations = []; s.lastMsgAt = null; s.privateUser = me; }
       const convs = await supabaseClient.from("conversations").select(CONV_COLUMNS);
       if (convs.error) throw convs.error;
-      let query = supabaseClient.from("messages").select(MSG_COLUMNS).order("created_at", { ascending: true }).limit(1000);
-      if (s.lastMsgAt) query = query.gt("created_at", s.lastMsgAt);
-      const msgs = await query;
+      const msgs = await supabaseClient.from("messages").select(MSG_COLUMNS).order("created_at", { ascending: true }).limit(1000);
       if (msgs.error) throw msgs.error;
       const old = new Map(s.conversations.map(c => [c.id, c]));
       s.conversations = convs.data.map(c => {
@@ -96,7 +94,7 @@ const Store = (() => {
         return { id: c.id, listingId: c.listing_id, otherId: mine ? c.participant_id : c.owner_id,
           readAt: new Date(mine ? c.owner_read_at : c.participant_read_at).getTime(),
           ownerConfirmedAt: c.owner_confirmed_at, participantConfirmedAt: c.participant_confirmed_at,
-          messages: prev ? prev.messages : [], unread: 0 };
+          messages: [], unread: 0 };
       });
       msgs.data.forEach(m => this.receiveMessage(m, false));
       if (msgs.data.length) s.lastMsgAt = msgs.data[msgs.data.length - 1].created_at;
