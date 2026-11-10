@@ -24,6 +24,7 @@ const Auth = (() => {
 
   async function loadProfile() {
     if (!user()) return;
+    ME = user().id;
     const { data, error } = await supabaseClient
       .from("profiles")
       .select("id, display_name, role, place, lat, lng")
@@ -59,6 +60,7 @@ const Auth = (() => {
     const result = await supabaseClient.auth.signInWithPassword({ email, password });
     if (result.error) throw result.error;
     session = result.data.session;
+    ME = session?.user?.id || "me";
     await loadProfile();
   }
 
@@ -74,6 +76,7 @@ const Auth = (() => {
     if (result.error) throw result.error;
     if (result.data.session) {
       session = result.data.session;
+      ME = session.user.id;
       await saveProfile({ name, role: "individual", place: "" });
     }
     return result.data.session;
@@ -83,6 +86,7 @@ const Auth = (() => {
     const { error } = await supabaseClient.auth.signOut();
     if (error) throw error;
     session = null; profile = null;
+    ME = "me";
     Store.reset();
     location.reload();
   }
@@ -91,9 +95,11 @@ const Auth = (() => {
     const result = await supabaseClient.auth.getSession();
     if (result.error) throw result.error;
     session = result.data.session;
+    ME = session?.user?.id || "me";
     if (session) await loadProfile();
     supabaseClient.auth.onAuthStateChange((_event, next) => {
       session = next;
+      ME = next?.user?.id || "me";
       document.dispatchEvent(new CustomEvent("authchange"));
     });
   }

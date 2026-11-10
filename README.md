@@ -78,22 +78,28 @@ The site now uses Supabase Authentication for account creation, sign-in, profile
 roles and sign-out. To enable it in a new Supabase project:
 
 1. Open the Supabase SQL Editor.
-2. Run [`supabase/schema.sql`](supabase/schema.sql) to create the profiles table,
-   automatic profile creation trigger and Row Level Security policies.
+2. If you already ran the original schema, run
+   [`supabase/shared-data.sql`](supabase/shared-data.sql). For a new project,
+   [`supabase/schema.sql`](supabase/schema.sql) includes the complete schema.
 3. In **Authentication → Providers**, enable Email.
 4. In **Authentication → URL Configuration**, set the **Site URL** to
    `https://git-gautham.github.io/recircle/` and add that same URL under
    **Redirect URLs**.
-5. Visit the live site and click **Sign in** in the header.
+5. To brand verification emails, open **Authentication → Emails → Confirm signup**,
+   paste [`supabase/confirm-signup-email.html`](supabase/confirm-signup-email.html)
+   into the email body, and save.
+6. Visit the live site and click **Sign in** in the header.
 
 The frontend contains only the Supabase publishable key. Never expose a
-`service_role` key in the site. The current marketplace demo data remains
-browser-local; the schema is the secure foundation for moving listings,
-conversations and messages to shared persistence.
+`service_role` key in the site. Authenticated listings, conversations and
+messages created after the shared-data migration are stored in Supabase and
+visible according to the RLS policies. The original seed demo data remains
+browser-local.
 
 ## Notes on the demo
 
-- Data is stored in the browser (`localStorage`), so each visitor has their own copy. No server or sign-up needed.
+- Seed demo data is stored in the browser (`localStorage`); authenticated
+  listings and messages are shared through Supabase.
 - The other person in chat is simulated with friendly auto-replies so judges can try the full flow:
   **List waste → Messages → Mark as exchanged → see it on History & Impact.**
 - CO₂e numbers are indicative estimates (weight × per-material factor in `js/data.js`).

@@ -331,5 +331,7 @@ function logoSVG() {
 document.addEventListener("DOMContentLoaded", async () => {
   try { await Auth.init(); }
   catch (err) { console.error("Supabase authentication could not initialize", err); }
+  try { await Store.sync(); }
+  catch (err) { console.error("Shared data could not be loaded", err); toast("Shared listings are temporarily unavailable"); }
   renderChrome();
 });

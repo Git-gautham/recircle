@@ -65,6 +65,7 @@ function resizeImage(file, max = 800) {
 /* Demo only: a community member responds to a new listing so the
    chat feature can be tried immediately. Remove for a real backend. */
 function simulateInterest(listing) {
+  if (Auth.isSignedIn()) return null;
   const pool = USERS.filter(u => listing.kind === "offer"
     ? ["student", "recycler", "individual"].includes(u.role)
     : ["business", "individual"].includes(u.role));
@@ -116,6 +117,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   $("#postForm").addEventListener("submit", e => {
     e.preventDefault();
+    if (!Auth.isSignedIn()) { toast("Sign in before publishing a listing"); openAuth(); return; }
     const d = formData();
     if (!d.title) { toast("Please add a title"); $("[name=title]").focus(); return; }
     if (!(d.weightKg > 0)) { toast("Please add an approximate weight"); $("[name=weightKg]").focus(); return; }
@@ -129,7 +131,7 @@ document.addEventListener("DOMContentLoaded", () => {
     openModal(`
       <h2>🎉 Listing published!</h2>
       <p>Your ${d.kind === "wanted" ? "request" : "listing"} is now live on the marketplace.</p>
-      <p class="muted small">Demo: <b>${esc(who.name)}</b> has already sent you a message.</p>
+      ${who ? `<p class="muted small">Demo: <b>${esc(who.name)}</b> has already sent you a message.</p>` : `<p class="muted small">Your listing is shared with the ReCircle community.</p>`}
       <div class="form-actions">
         <a class="btn ghost" href="marketplace.html">View marketplace</a>
         <a class="btn primary" href="messages.html">Open messages</a>
