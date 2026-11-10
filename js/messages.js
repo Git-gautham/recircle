@@ -13,8 +13,8 @@ const QUICK_SELLER = {
 let activeId = new URLSearchParams(location.search).get("c");
 
 function quickReplies(c, l) {
-  if (!l) return [];
-  const isSeller = l.ownerId === ME;
+  if (!c) return [];
+  const isSeller = c.ownerId === ME;
   const sets = isSeller ? QUICK_SELLER : QUICK_BUYER;
   if (!c.messages.length) return sets.start;
   const last = c.messages[c.messages.length - 1];
@@ -59,7 +59,7 @@ function renderChat() {
   const other = Store.userById(c.otherId);
   const l = Store.listing(c.listingId);
   const done = l && l.status === "exchanged";
-  const isSeller = l && l.ownerId === ME;
+  const isSeller = c.ownerId === ME;
   const confirmedByMe = isSeller ? c.ownerConfirmedAt : c.participantConfirmedAt;
   const confirmedByOther = isSeller ? c.participantConfirmedAt : c.ownerConfirmedAt;
   const replies = quickReplies(c, l);
@@ -89,7 +89,7 @@ function renderChat() {
     ${done ? `<p class="chat-ended muted small">This exchange is complete. Messaging is closed.</p>` : `
       <form class="chat-input" id="chatForm">
         <input id="msg" maxlength="1000" autocomplete="off" placeholder="Write a message…" aria-label="Message" autofocus>
-        <button class="btn primary">Send</button>
+        <button class="btn primary" type="submit">Send</button>
       </form>`}`;
 
   $("#chatLayout").classList.add("in-chat");
