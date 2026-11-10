@@ -23,6 +23,10 @@ alter table public.profiles drop column if exists lat;
 alter table public.profiles drop column if exists lng;
 
 alter table public.profiles
+  drop constraint if exists profiles_name_len,
+  drop constraint if exists profiles_place_len;
+
+alter table public.profiles
   add constraint profiles_name_len  check (char_length(display_name) between 1 and 40) not valid,
   add constraint profiles_place_len check (char_length(place) <= 60) not valid;
 
@@ -62,6 +66,18 @@ create trigger profiles_protect_role
 -- 2. LISTINGS — thumbnails, validation, approximate location, limits
 -- ---------------------------------------------------------------------
 alter table public.listings add column if not exists thumb text;
+
+alter table public.listings
+  drop constraint if exists listings_title_len,
+  drop constraint if exists listings_desc_len,
+  drop constraint if exists listings_place_len,
+  drop constraint if exists listings_condition_len,
+  drop constraint if exists listings_unit_ok,
+  drop constraint if exists listings_category_ok,
+  drop constraint if exists listings_numbers_ok,
+  drop constraint if exists listings_latlng_ok,
+  drop constraint if exists listings_image_ok,
+  drop constraint if exists listings_thumb_ok;
 
 alter table public.listings
   add constraint listings_title_len     check (char_length(title) between 3 and 70) not valid,
@@ -172,6 +188,9 @@ create index if not exists conversations_participant_idx on public.conversations
 -- ---------------------------------------------------------------------
 -- 4. MESSAGES — length limit, rate limit, real-time
 -- ---------------------------------------------------------------------
+alter table public.messages
+  drop constraint if exists messages_body_len;
+
 alter table public.messages
   add constraint messages_body_len check (char_length(body) between 1 and 1000) not valid;
 
