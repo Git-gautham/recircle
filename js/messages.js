@@ -157,6 +157,14 @@ document.addEventListener("DOMContentLoaded", () => {
     $("#msg")?.focus();
   });
   document.addEventListener("listingschange", renderAll);
-  document.addEventListener("messageschange", renderAll);
+  document.addEventListener("messageschange", () => {
+    const convos = Store.conversations();
+    if (activeId && !convos.some(c => c.id === activeId)) {
+      activeId = innerWidth > 760 ? convos[0]?.id || null : null;
+      history.replaceState(null, "", activeId ? "messages.html?c=" + activeId : "messages.html");
+    }
+    if (!activeId && innerWidth > 760) activeId = convos[0]?.id || null;
+    renderAll();
+  });
   document.addEventListener("messageserror", renderMessagesError);
 });

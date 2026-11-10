@@ -90,7 +90,7 @@ const Store = (() => {
       if (msgs.error) throw msgs.error;
       const old = new Map(s.conversations.map(c => [c.id, c]));
       s.conversations = convs.data.map(c => {
-        const prev = old.get(c.id), mine = c.owner_id === me;
+        const mine = c.owner_id === me;
         return { id: c.id, listingId: c.listing_id, otherId: mine ? c.participant_id : c.owner_id,
           readAt: new Date(mine ? c.owner_read_at : c.participant_read_at).getTime(),
           ownerConfirmedAt: c.owner_confirmed_at, participantConfirmedAt: c.participant_confirmed_at,
