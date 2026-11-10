@@ -317,11 +317,35 @@ function openAuth() {
         toggle.textContent = signup ? "I already have an account" : "Create account";
       }
       const submit = $("#authSubmit", m), toggle = $("#authToggle", m), error = $("#authError", m);
-      $("#forgotBtn", m).addEventListener("click", async () => {
+      const forgot = $("#forgotBtn", m);
+      function resetEmailError(message) {
+        return /rate limit|too many|email limit|over_email_send_rate_limit/i.test(message)
+          ? "Email sending is temporarily limited by Supabase. Wait a while before requesting another link, then try again."
+          : message;
+      }
+      forgot.addEventListener("click", async () => {
         const email = $("[name=email]", m).value.trim();
         if (!email) { error.textContent = "Type your email first."; return; }
-        const result = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo: new URL("reset.html", location.href).href });
-        error.textContent = result.error ? result.error.message : "If that email has an account, a reset link is on its way.";
+        const key = `recircle_reset_requested:${email.toLowerCase()}`;
+        const lastRequest = Number(sessionStorage.getItem(key) || 0);
+        if (Date.now() - lastRequest < 60000) {
+          error.textContent = "Please wait a minute before requesting another reset email.";
+          return;
+        }
+        forgot.disabled = true;
+        try {
+          const result = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo: new URL("reset.html", location.href).href });
+          if (result.error) {
+            error.textContent = resetEmailError(result.error.message);
+          } else {
+            sessionStorage.setItem(key, String(Date.now()));
+            error.textContent = "If that email has an account, a reset link is on its way. Check your inbox and spam folder.";
+          }
+        } catch (err) {
+          error.textContent = resetEmailError(err.message || "Couldn't send a reset email.");
+        } finally {
+          setTimeout(() => { forgot.disabled = false; }, 60000);
+        }
       });
       $("#resendBtn", m).addEventListener("click", async () => {
         const email = $("[name=email]", m).value.trim();
