@@ -54,8 +54,6 @@ function renderChat() {
     $("#chatLayout").classList.remove("in-chat");
     return;
   }
-  Store.markRead(c.id);
-  refreshChrome();
   const other = Store.userById(c.otherId);
   const l = Store.listing(c.listingId);
   const done = l && l.status === "exchanged";
@@ -141,6 +139,15 @@ function confirmExchange(c, l, other, alreadyConfirmed) {
 
 function renderAll() { renderChat(); renderList(); }
 
+function selectConversation(id) {
+  activeId = id;
+  history.replaceState(null, "", "messages.html?c=" + activeId);
+  Store.markRead(activeId);
+  refreshChrome();
+  renderAll();
+  $("#msg")?.focus();
+}
+
 function renderMessagesError(e) {
   const message = e?.detail?.message || "Messages are temporarily unavailable.";
   $("#convoList").innerHTML = `<p class="muted small" style="padding:0 16px">${esc(message)}</p>`;
@@ -151,10 +158,7 @@ document.addEventListener("DOMContentLoaded", () => {
   renderAll();
   $("#convoList").addEventListener("click", e => {
     const b = e.target.closest(".convo"); if (!b) return;
-    activeId = b.dataset.id;
-    history.replaceState(null, "", "messages.html?c=" + activeId);
-    renderAll();
-    $("#msg")?.focus();
+    selectConversation(b.dataset.id);
   });
   document.addEventListener("listingschange", renderAll);
   document.addEventListener("messageschange", () => {

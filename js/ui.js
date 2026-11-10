@@ -386,9 +386,6 @@ function startRealtime() {
       else { try { await Store.loadPrivate(); } catch (e) { console.error(e); } }
       refreshChrome();
       document.dispatchEvent(new CustomEvent("messageschange", { detail: row }));
-    }).on("postgres_changes", { event: "UPDATE", schema: "public", table: "conversations" }, async () => {
-      try { await Store.loadPrivate(); } catch (e) { console.error("Conversation update could not be loaded", e); }
-      refreshChrome();
     }).subscribe();
 }
 
