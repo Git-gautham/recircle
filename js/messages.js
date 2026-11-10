@@ -1,7 +1,26 @@
 /* ReCircle — buyer/seller messaging */
 
-const QUICK = ["Is it still available?", "When can I pick it up?", "Can you share the exact location?", "Thank you! 🙏"];
+const QUICK_BUYER = {
+  start: ["Is it still available?", "When can I pick it up?", "Can you share the condition?"],
+  response: ["That works for me.", "Could we choose another time?", "Thank you! 🙏"],
+  arrange: ["I can arrange pickup.", "Can we confirm the pickup area?", "I will message when I am nearby."]
+};
+const QUICK_SELLER = {
+  start: ["Yes, it is still available.", "What time would suit you?", "I can share more details."],
+  response: ["That time works for me.", "Please share your estimated arrival.", "Thank you! 🙏"],
+  arrange: ["Can we confirm the pickup time?", "The item is reserved for you.", "Please message when you are nearby."]
+};
 let activeId = new URLSearchParams(location.search).get("c");
+
+function quickReplies(c, l) {
+  if (!l) return [];
+  const isSeller = l.ownerId === ME;
+  const sets = isSeller ? QUICK_SELLER : QUICK_BUYER;
+  if (!c.messages.length) return sets.start;
+  const last = c.messages[c.messages.length - 1];
+  if (c.messages.length === 1 || last.from !== ME) return sets.response;
+  return sets.arrange;
+}
 
 function renderList() {
   const convos = Store.conversations();
@@ -40,6 +59,7 @@ function renderChat() {
   const other = Store.userById(c.otherId);
   const l = Store.listing(c.listingId);
   const done = l && l.status === "exchanged";
+  const replies = quickReplies(c, l);
 
   box.innerHTML = `
     <div class="chat-head">
@@ -59,7 +79,7 @@ function renderChat() {
         : `<div class="bubble ${m.from === ME ? "mine" : ""}">${esc(m.text)}<time>${fmtTime(m.ts)}</time></div>`).join("")}
       ${!c.messages.length ? `<p class="muted small" style="text-align:center">Start the conversation — ask about condition, quantity or pickup time.</p>` : ""}
     </div>
-    ${done ? "" : `<div class="quick-replies">${QUICK.map(q => `<button type="button">${esc(q)}</button>`).join("")}</div>`}
+    ${done || !replies.length ? "" : `<div class="quick-replies" aria-label="Suggested messages">${replies.map(q => `<button type="button">${esc(q)}</button>`).join("")}</div>`}
     <form class="chat-input" id="chatForm">
       <input id="msg" maxlength="1000" autocomplete="off" placeholder="Write a message…" aria-label="Message" ${done ? "" : "autofocus"}>
       <button class="btn primary">Send</button>
