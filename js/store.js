@@ -101,6 +101,7 @@ const Store = (() => {
       if (msgs.data.length) s.lastMsgAt = msgs.data[msgs.data.length - 1].created_at;
       s.conversations.forEach(c => { c.unread = c.messages.filter(m => m.from !== me && m.ts > c.readAt).length; });
       save(); await this.loadProfiles(s.conversations.map(c => c.otherId));
+      document.dispatchEvent(new CustomEvent("messageschange"));
     },
     me() { return load().user; },
     saveMe(patch) { Object.assign(load().user, patch); save(); },

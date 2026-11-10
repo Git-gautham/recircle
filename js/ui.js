@@ -386,7 +386,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   renderChrome();
   try { await Store.loadPublic(); } catch (err) { console.error(err); toast("Listings are temporarily unavailable"); }
   try { await Store.loadExchanges(); } catch (err) { console.error(err); }
-  try { await Store.loadPrivate(); } catch (err) { console.error(err); }
+  try { await Store.loadPrivate(); }
+  catch (err) {
+    console.error("Private messages could not be loaded", err);
+    toast("Messages are temporarily unavailable. Please try again.");
+    document.dispatchEvent(new CustomEvent("messageserror", { detail: err }));
+  }
   refreshChrome(); startRealtime();
   document.dispatchEvent(new CustomEvent("listingschange"));
 });

@@ -113,6 +113,11 @@ function confirmExchange(c, l, other) {
 
 function renderAll() { renderChat(); renderList(); }
 
+function renderMessagesError(e) {
+  const message = e?.detail?.message || "Messages are temporarily unavailable.";
+  $("#convoList").innerHTML = `<p class="muted small" style="padding:0 16px">${esc(message)}</p>`;
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   if (!activeId && innerWidth > 760) activeId = Store.conversations()[0]?.id || null;
   renderAll();
@@ -125,4 +130,5 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   document.addEventListener("listingschange", renderAll);
   document.addEventListener("messageschange", renderAll);
+  document.addEventListener("messageserror", renderMessagesError);
 });
