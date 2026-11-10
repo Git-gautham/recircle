@@ -30,10 +30,14 @@ function openListing(id) {
     : `<span aria-hidden="true">${cat.icon}</span>`;
 
   const actions = mine
-    ? `<button class="btn ghost" data-act="edit">Edit listing</button>
-       <button class="btn ghost" data-act="toggle">${l.status === "reserved" ? "Mark available" : "Mark reserved"}</button>
-       <button class="btn ghost" data-act="delete">Delete</button>
-       <a class="btn primary" href="messages.html">View messages</a>`
+    ? (l.status === "exchanged"
+      ? `<span class="muted small">Exchanged listings can't be edited or reopened.</span>
+         <button class="btn ghost" data-act="delete">Delete</button>
+         <a class="btn primary" href="messages.html">View messages</a>`
+      : `<button class="btn ghost" data-act="edit">Edit listing</button>
+         <button class="btn ghost" data-act="toggle">${l.status === "reserved" ? "Mark available" : "Mark reserved"}</button>
+         <button class="btn ghost" data-act="delete">Delete</button>
+         <a class="btn primary" href="messages.html">View messages</a>`)
     : l.status === "exchanged"
       ? `<span class="muted">This item has already found a new home ♻️</span>`
       : `<button class="btn primary" data-act="chat">💬 ${l.kind === "wanted" ? "I have this" : "Message " + esc(owner.name.split(" ")[0])}</button>
@@ -47,7 +51,7 @@ function openListing(id) {
     <div class="detail-body">
       ${catBadge(l.category)}
       <h2>${esc(l.title)}</h2>
-      <p class="muted">📍 ${esc(l.place || "")} · ${fmtKm(distanceKm(here, l))} away · posted ${timeAgo(l.createdAt)}</p>
+      <p class="muted">📍 ${esc(l.place || "Area not given")}${hasMyLocation() ? ` · ${fmtKm(distanceKm(here, l))} away` : ""} · posted ${timeAgo(l.createdAt)}</p>
       <p>${esc(l.desc)}</p>
       <dl class="facts">
         <div><dt>Quantity</dt><dd>${esc(l.qty)} ${esc(l.unit)}</dd></div>
@@ -110,6 +114,7 @@ function openListing(id) {
               </div>
               <label>Pickup area<input name="place" maxlength="40" value="${esc(l.place || "")}"></label>
               <p class="muted small">To change the map pin, create a new listing. The current approximate location will be kept.</p>
+              <p class="muted small">Changing the type, category, title, quantity, unit or weight clears any pending exchange confirmations, so both people confirm the new details.</p>
               <div class="form-actions"><button type="button" class="btn ghost" data-act="cancel-edit">Cancel</button><button class="btn primary">Save changes</button></div>
             </form>`, {
               wide: true,
@@ -168,7 +173,9 @@ function openListing(id) {
             .then(() => { toast("Status updated"); closeModal(); document.dispatchEvent(new CustomEvent("listingschange")); })
             .catch(err => toast(err.message || "Couldn't update"));
         }
-        if (act === "delete" && confirm("Delete this listing?")) {
+        if (act === "delete" && confirm(l.status === "exchanged"
+            ? "Delete this listing? The exchange stays in history and your chats are kept."
+            : "Delete this listing? Chats about it are kept but become read-only.")) {
           Store.deleteListing(l.id).then(() => {
             toast("Listing deleted"); closeModal(); document.dispatchEvent(new CustomEvent("listingschange"));
           }).catch(err => toast(err.message || "Couldn't delete"));

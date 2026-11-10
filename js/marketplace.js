@@ -24,7 +24,8 @@ function initMap() {
   meMarker = L.marker([here.lat, here.lng], {
     icon: L.divIcon({ className: "", html: '<div class="me-pin"></div>', iconSize: [18, 18], iconAnchor: [9, 9] }),
     zIndexOffset: 1000, title: "You are here"
-  }).addTo(map).bindTooltip("You are here");
+  }).bindTooltip("You are here");
+  if (hasMyLocation()) meMarker.addTo(map);
 }
 
 function pinIcon(l) {
@@ -38,11 +39,12 @@ function pinIcon(l) {
 
 function drawMap(items) {
   if (!map) return;
-  const here = myLocation();
+  const here = myLocation(), known = hasMyLocation();
   markerLayer.clearLayers();
   meMarker.setLatLng([here.lat, here.lng]);
+  if (known && !map.hasLayer(meMarker)) meMarker.addTo(map);
   if (radiusCircle) { map.removeLayer(radiusCircle); radiusCircle = null; }
-  if (filters.radius <= 50) {
+  if (known && filters.radius <= 50) {
     radiusCircle = L.circle([here.lat, here.lng], {
       radius: filters.radius * 1000, color: "#2f7a52", weight: 1.5, fillOpacity: .06, dashArray: "6 6"
     }).addTo(map);
@@ -52,25 +54,27 @@ function drawMap(items) {
     m.bindPopup(`
       ${catBadge(l.category)}
       <h4>${esc(l.title)}</h4>
-      <div class="small muted">${l.kind === "wanted" ? "Wanted" : "Available"} · ${priceLabel(l)} · ${fmtKm(l.d)}</div>
+      <div class="small muted">${l.kind === "wanted" ? "Wanted" : "Available"} · ${priceLabel(l)}${l.d == null ? "" : " · " + fmtKm(l.d)}</div>
       <button class="btn primary sm" style="margin-top:8px" data-open-listing="${esc(l.id)}">View details</button>`);
     m.on("popupopen", e => {
       e.popup.getElement().querySelector("[data-open-listing]")?.addEventListener("click", () => openListing(l.id));
     });
     markerLayer.addLayer(m);
   });
+  /* Without your location, zoom the map to show all matching listings */
+  if (!known && items.length) map.fitBounds(items.map(l => [l.lat, l.lng]), { padding: [30, 30], maxZoom: 13 });
 }
 
 /* ---------- filtering ---------- */
 function filtered() {
-  const here = myLocation();
+  const here = myLocation(), known = hasMyLocation();
   const q = filters.q.trim().toLowerCase();
-  let items = Store.listings().map(l => ({ ...l, d: distanceKm(here, l) }));
+  let items = Store.listings().map(l => ({ ...l, d: known ? distanceKm(here, l) : null }));
   items = items.filter(l => {
     if (!filters.showDone && l.status === "exchanged") return false;
     if (filters.kind !== "all" && l.kind !== filters.kind) return false;
     if (filters.cat !== "all" && l.category !== filters.cat) return false;
-    if (filters.radius <= 50 && l.d > filters.radius) return false;
+    if (known && filters.radius <= 50 && l.d > filters.radius) return false;
     if (q) {
       const owner = Store.userById(l.ownerId).name;
       const hay = [l.title, l.desc, l.place, owner, CATEGORIES[l.category]?.label].join(" ").toLowerCase();
@@ -78,10 +82,11 @@ function filtered() {
     }
     return true;
   });
+  const newest = (a, b) => b.createdAt - a.createdAt;
   const by = {
-    near: (a, b) => a.d - b.d,
-    new: (a, b) => b.createdAt - a.createdAt,
-    free: (a, b) => (Number(a.price) > 0) - (Number(b.price) > 0) || a.d - b.d,
+    near: known ? (a, b) => a.d - b.d : newest,   /* no location yet: newest first */
+    new: newest,
+    free: (a, b) => (Number(a.price) > 0) - (Number(b.price) > 0) || (known ? a.d - b.d : newest(a, b)),
     heavy: (a, b) => b.weightKg - a.weightKg
   };
   return items.sort(by[filters.sort]);
@@ -95,7 +100,10 @@ function render() {
     ? items.map(l => listingCard(l, here)).join("")
     : `<div class="empty" style="grid-column:1/-1"><span class="big">🔍</span>
          Nothing matches yet.<br>Try a wider distance — or <a href="post.html?kind=wanted${filters.cat !== "all" ? "&cat=" + filters.cat : ""}">post a Wanted request</a> so people can find you.</div>`;
-  $("#locLabel").textContent = "Centred on: " + (here.place || "your location");
+  $("#locLabel").textContent = hasMyLocation()
+    ? "Distances from: " + (here.place || "your location")
+    : "Location not shared — showing newest first. Tap 📍 Use my location to see distances.";
+  $("#radius").disabled = !hasMyLocation();
   drawMap(items);
 }
 
@@ -148,8 +156,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
   $("#locBtn").addEventListener("click", async () => {
     $("#locBtn").textContent = "Locating…";
-    try { await detectLocation(); toast("Showing listings near you"); render(); }
-    catch (e) { toast("Couldn't get location — using " + myLocation().place); }
+    try {
+      const p = await detectLocation();
+      if (map) map.setView([p.lat, p.lng], 12);
+      toast("Showing listings near you"); render();
+    }
+    catch (e) { toast("Couldn't get your location — allow location access in the browser and try again"); }
     $("#locBtn").textContent = "📍 Use my location";
   });
 

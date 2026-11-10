@@ -80,27 +80,54 @@ function toast(msg) {
   t._h = setTimeout(() => t.classList.remove("show"), 2600);
 }
 
-/* ---------- location ---------- */
+/* ---------- location ----------
+   Your own position is kept only in this browser and is used to work
+   out distances. Until you share it, distances are hidden. */
+function hasMyLocation() {
+  const u = Store.me();
+  return Boolean(u.locationSet) ||
+    (Number.isFinite(u.lat) && (u.lat !== DEFAULT_CENTER.lat || u.lng !== DEFAULT_CENTER.lng));
+}
 function myLocation() {
   const u = Store.me();
-  return { lat: u.lat, lng: u.lng, place: u.place };
+  const label = u.locLabel || (u.place && u.place !== "My location" ? u.place : "");
+  return { lat: u.lat, lng: u.lng, place: label || (hasMyLocation() ? "your location" : DEFAULT_CENTER.place) };
 }
 function detectLocation() {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) return reject(new Error("Geolocation not supported"));
     navigator.geolocation.getCurrentPosition(
-      p => {
-        const loc = {
-          lat: +p.coords.latitude.toFixed(5),
-          lng: +p.coords.longitude.toFixed(5),
-          place: "My location"
-        };
-        Store.saveMe(loc); resolve(loc);
+      async p => {
+        const loc = { lat: +p.coords.latitude.toFixed(5), lng: +p.coords.longitude.toFixed(5), locationSet: true };
+        Store.saveMe(loc);
+        const name = await placeName(loc.lat, loc.lng);
+        if (name) Store.saveMe({ locLabel: name });
+        resolve({ ...loc, place: name });
       },
       err => reject(err),
       { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
     );
   });
+}
+
+/* Area name for a map point, from OpenStreetMap's free Nominatim service.
+   Results are cached; returns "" if the lookup fails. */
+const placeNameCache = new Map();
+async function placeName(lat, lng) {
+  const key = (+lat).toFixed(3) + "," + (+lng).toFixed(3);
+  if (placeNameCache.has(key)) return placeNameCache.get(key);
+  try {
+    const url = "https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=14&addressdetails=1&accept-language=en"
+      + "&lat=" + encodeURIComponent(lat) + "&lon=" + encodeURIComponent(lng);
+    const res = await fetch(url, { headers: { Accept: "application/json" } });
+    if (!res.ok) return "";
+    const a = (await res.json()).address || {};
+    const local = a.suburb || a.neighbourhood || a.village || a.town || a.city_district || a.hamlet || "";
+    const city = a.city || a.town || a.county || a.state_district || "";
+    const name = [...new Set([local, city].filter(Boolean))].join(", ").slice(0, 40);
+    placeNameCache.set(key, name);
+    return name;
+  } catch (e) { return ""; }
 }
 
 /* ---------- theme (light / dark) ---------- */
@@ -250,7 +277,11 @@ function openProfile() {
     </form>`, {
     onOpen(m) {
       $("#geoBtn", m).addEventListener("click", async () => {
-        try { await detectLocation(); toast("Location updated"); $("[name=place]", m).value = "My location"; }
+        try {
+          const p = await detectLocation();
+          toast("Location updated");
+          if (p.place) $("[name=place]", m).value = p.place;
+        }
         catch (e) { toast("Couldn't get your location — allow location access and try again"); }
       });
       $("#profileForm", m).addEventListener("submit", e => {
@@ -265,7 +296,7 @@ function openProfile() {
         catch (err) { toast(err.message || "Couldn't sign out"); }
       });
       $("#deleteAccountBtn", m).addEventListener("click", async () => {
-        if (!confirm("Delete your account permanently? Your profile, listings, photos and messages will be removed.")) return;
+        if (!confirm("Delete your account permanently? Your profile, listings and photos will be removed. Messages you sent stay visible to the people you chatted with, shown as from a Former member.")) return;
         try {
           const uid = Auth.user().id, bucket = supabaseClient.storage.from("listing-images");
           const files = await bucket.list(uid, { limit: 100 });
@@ -391,7 +422,7 @@ function openAuth() {
 function listingCard(l, from) {
   const owner = Store.userById(l.ownerId);
   const cat = CATEGORIES[l.category] || CATEGORIES.other;
-  const dist = from ? fmtKm(distanceKm(from, l)) : "";
+  const dist = from && hasMyLocation() ? fmtKm(distanceKm(from, l)) : "";
   const image = safeImageUrl(l.thumb || l.image);
   const media = image
     ? `<img src="${esc(image)}" alt="" loading="lazy">`
@@ -436,7 +467,18 @@ function startRealtime() {
       else { try { await Store.loadPrivate(); } catch (e) { console.error(e); } }
       refreshChrome();
       document.dispatchEvent(new CustomEvent("messageschange", { detail: row }));
-    }).subscribe();
+    })
+    /* Exchange confirmations: show the other person's confirm/undo live,
+       and refresh listings so a completed exchange appears straight away. */
+    .on("postgres_changes", { event: "UPDATE", schema: "public", table: "conversations" }, async ({ new: row }) => {
+      const confirmationChanged = Store.applyConversationUpdate(row);
+      if (!confirmationChanged) return;
+      try { await Store.loadPublic(true); } catch (e) { console.error(e); }
+      refreshChrome();
+      document.dispatchEvent(new CustomEvent("messageschange", { detail: row }));
+      document.dispatchEvent(new CustomEvent("listingschange"));
+    })
+    .subscribe();
 }
 
 document.addEventListener("DOMContentLoaded", async () => {

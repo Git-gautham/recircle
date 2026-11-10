@@ -2,6 +2,7 @@
 
 let pickMap, pickMarker, photoPreview = null, photoBlobs = null;
 const loc = { ...myLocationSafe() };
+let placeTyped = false, placeTimer = null;   /* true once the user types their own area name */
 
 function myLocationSafe() { try { return myLocation(); } catch (e) { return { ...DEFAULT_CENTER }; } }
 
@@ -17,7 +18,7 @@ function formData() {
     weightKg: Number(f.get("weightKg")) || 0,
     condition: (f.get("condition") || "").trim(),
     price: Number(f.get("price")) || 0,
-    place: (f.get("place") || "").trim() || "Near " + DEFAULT_CENTER.place,
+    place: (f.get("place") || "").trim(),
     lat: +loc.lat.toFixed(5),
     lng: +loc.lng.toFixed(5),
     image: photoPreview
@@ -39,10 +40,26 @@ function initPickMap() {
     maxZoom: 19, attribution: "&copy; OpenStreetMap contributors"
   }).addTo(pickMap);
   pickMarker = L.marker([loc.lat, loc.lng], { draggable: true }).addTo(pickMap);
-  const setLoc = ll => { loc.lat = ll.lat; loc.lng = ll.lng; pickMarker.setLatLng(ll); };
+  const setLoc = ll => { loc.lat = ll.lat; loc.lng = ll.lng; pickMarker.setLatLng(ll); schedulePlaceFill(); };
   pickMap.on("click", e => setLoc(e.latlng));
   pickMarker.on("dragend", () => setLoc(pickMarker.getLatLng()));
   pickMap._setLoc = setLoc;
+}
+
+/* Fill the "Pickup location" box with the area name of the pin
+   (OpenStreetMap), unless the user typed their own. */
+async function fillPlaceFromPin() {
+  const input = $("#placeInput");
+  if (placeTyped && input.value.trim()) return input.value.trim();
+  input.placeholder = "Finding area name…";
+  const name = await placeName(loc.lat, loc.lng);
+  input.placeholder = "Area / town";
+  if (name && !(placeTyped && input.value.trim())) { input.value = name; placeTyped = false; updatePreview(); }
+  return input.value.trim();
+}
+function schedulePlaceFill() {
+  clearTimeout(placeTimer);
+  placeTimer = setTimeout(fillPlaceFromPin, 800);   /* at most ~1 lookup per pin move */
 }
 
 /* Shrink photos so they fit comfortably in browser storage */
@@ -70,10 +87,12 @@ document.addEventListener("DOMContentLoaded", () => {
     <label style="--cat:${c.color}"><input type="radio" name="category" value="${k}" ${k === startCat ? "checked" : ""}>
       <span aria-hidden="true">${c.icon}</span>${c.label}</label>`).join("");
   if (params.get("kind") === "wanted") $("input[name=kind][value=wanted]").checked = true;
-  $("#placeInput").value = loc.place || "";
+  $("#placeInput").value = hasMyLocation() ? (Store.me().locLabel || "") : "";
+  $("#placeInput").addEventListener("input", e => { placeTyped = Boolean(e.target.value.trim()); });
 
   try { initPickMap(); }
   catch (e) { $("#pickMap").innerHTML = '<p class="empty">Map unavailable offline — your profile location will be used.</p>'; }
+  if (hasMyLocation() && !$("#placeInput").value) schedulePlaceFill();
 
   updatePreview();
   $("#postForm").addEventListener("input", updatePreview);
@@ -101,7 +120,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const p = await detectLocation();
       if (pickMap) { pickMap._setLoc(p); pickMap.setView([p.lat, p.lng], 15); }
       else { loc.lat = p.lat; loc.lng = p.lng; }
-      if (!$("#placeInput").value) $("#placeInput").value = "My location";
+      if (!placeTyped && p.place) { $("#placeInput").value = p.place; updatePreview(); }
       toast("Pin moved to your location");
     } catch (err) { toast("Couldn't get your location — click on the map instead"); }
   });
@@ -112,6 +131,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const d = formData();
     if (d.title.length < 3) { toast("Title needs at least 3 characters"); $("[name=title]").focus(); return; }
     if (!(d.weightKg > 0)) { toast("Please add an approximate weight"); $("[name=weightKg]").focus(); return; }
+    if (!d.place) d.place = await fillPlaceFromPin();
+    if (!d.place) { toast("Add the pickup area (town or locality)"); $("#placeInput").focus(); return; }
 
     const btn = e.submitter || $("#postForm button[type=submit]");
     btn.disabled = true; btn.textContent = "Publishing…";
@@ -127,7 +148,7 @@ document.addEventListener("DOMContentLoaded", () => {
         <a class="btn ghost" href="marketplace.html">View marketplace</a>
         <a class="btn primary" href="messages.html">Open messages</a>
       </div>`);
-    $("#postForm").reset(); photoBlobs = null;
+    $("#postForm").reset(); photoBlobs = null; placeTyped = false;
     if (photoPreview) { URL.revokeObjectURL(photoPreview); photoPreview = null; }
     const img = $("#photoDrop img"); if (img) img.remove();
     $("input[name=category][value=" + startCat + "]").checked = true;

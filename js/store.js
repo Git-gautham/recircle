@@ -109,7 +109,8 @@ const Store = (() => {
     userById(id) {
       const s = load();
       if (id === ME) return s.user;
-      return (s.remoteUsers || []).find(u => u.id === id) || { id, name: "Unknown", role: "individual" };
+      if (!id) return { id: null, name: "Former member", role: "individual" };
+      return (s.remoteUsers || []).find(u => u.id === id) || { id, name: "ReCircle member", role: "individual" };
     },
     listings() { return [...load().listings, ...(load().remoteListings || [])].sort((a, b) => b.createdAt - a.createdAt); },
     listing(id) { return this.listings().find(l => l.id === id); },
@@ -183,20 +184,46 @@ const Store = (() => {
       c.unread = 0; c.readAt = Date.now(); save();
       if (remote()) supabaseClient.rpc("mark_conversation_read", { p_conversation: convId }).then(({ error }) => { if (error) console.error("mark read failed", error); });
     },
+    /* Confirm the hand-off. The second person's confirmation completes it. */
     async completeExchange(convId) {
       const result = await supabaseClient.rpc("complete_exchange", { p_conversation: convId });
       if (result.error) throw result.error;
-      const c = this.conversation(convId), me = Auth.user().id;
-      if (c) {
-        if (me === this.listing(c.listingId)?.ownerId) c.ownerConfirmedAt = result.data.confirmed_at;
-        else c.participantConfirmedAt = result.data.confirmed_at;
-      }
-      if (result.data.completed) {
-        const l = this.listing(result.data.listing_id); if (l) l.status = "exchanged";
+      const d = result.data, c = this.conversation(convId);
+      if (c) { c.ownerConfirmedAt = d.owner_confirmed_at; c.participantConfirmedAt = d.participant_confirmed_at; }
+      if (d.completed) {
+        const l = this.listing(d.listing_id); if (l) l.status = "exchanged";
+        load().conversations.forEach(x => {
+          if (x.listingId === d.listing_id && x.id !== convId) { x.ownerConfirmedAt = null; x.participantConfirmedAt = null; }
+        });
         load().exchangesLoadedAt = 0;
         document.dispatchEvent(new CustomEvent("listingschange"));
       }
+      save(); return d;
+    },
+    /* Take back my confirmation (only before the exchange is completed). */
+    async withdrawConfirmation(convId) {
+      const result = await supabaseClient.rpc("withdraw_exchange_confirmation", { p_conversation: convId });
+      if (result.error) throw result.error;
+      const c = this.conversation(convId);
+      if (c) { c.ownerConfirmedAt = result.data.owner_confirmed_at; c.participantConfirmedAt = result.data.participant_confirmed_at; }
       save(); return result.data;
+    },
+    /* Apply a live conversation update. Returns true if a confirmation changed. */
+    applyConversationUpdate(row) {
+      const c = this.conversation(row.id);
+      if (!c) return false;
+      const changed = (c.ownerConfirmedAt || null) !== (row.owner_confirmed_at || null)
+        || (c.participantConfirmedAt || null) !== (row.participant_confirmed_at || null)
+        || c.listingId !== row.listing_id
+        || c.ownerId !== row.owner_id || c.participantId !== row.participant_id;
+      c.ownerConfirmedAt = row.owner_confirmed_at; c.participantConfirmedAt = row.participant_confirmed_at;
+      c.listingId = row.listing_id; c.ownerId = row.owner_id; c.participantId = row.participant_id;
+      c.otherId = c.ownerId === ME ? c.participantId : (c.participantId === ME ? c.ownerId : c.otherId);
+      if (row.owner_confirmed_at && row.participant_confirmed_at) {
+        const l = this.listing(row.listing_id); if (l) l.status = "exchanged";
+        load().exchangesLoadedAt = 0;
+      }
+      save(); return changed;
     },
     history() { return load().history.slice().sort((a, b) => b.date - a.date); },
     unreadCount() { return load().conversations.reduce((n, c) => n + (c.unread || 0), 0); },

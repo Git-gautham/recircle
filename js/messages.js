@@ -30,13 +30,13 @@ function renderList() {
   }
   $("#convoList").innerHTML = convos.map(c => {
     const other = Store.userById(c.otherId);
-    const l = Store.listing(c.listingId);
+    const l = c.listingId ? Store.listing(c.listingId) : null;
     const last = c.messages[c.messages.length - 1];
     return `<button class="convo ${c.id === activeId ? "active" : ""}" data-id="${c.id}">
       ${avatar(other)}
       <span class="info">
         <span class="name"><span>${esc(other.name)}</span>${last ? `<time>${timeAgo(last.ts)}</time>` : ""}</span>
-        <span class="sub" style="display:block">${l ? (CATEGORIES[l.category] || CATEGORIES.other).icon + " " + esc(l.title) : "Listing removed"}</span>
+        <span class="sub" style="display:block">${l ? (CATEGORIES[l.category] || CATEGORIES.other).icon + " " + esc(l.title) + (l.status === "exchanged" ? " · Exchanged" : "") : "Listing removed"}</span>
         <span class="last" style="display:block">${last ? (last.from === ME ? "You: " : "") + esc(last.text) : "Say hello 👋"}</span>
       </span>
       ${c.unread ? `<span class="unread">${c.unread}</span>` : ""}
@@ -54,13 +54,26 @@ function renderChat() {
     $("#chatLayout").classList.remove("in-chat");
     return;
   }
+  const draft = $("#msg")?.value || "";
   const other = Store.userById(c.otherId);
-  const l = Store.listing(c.listingId);
-  const done = l && l.status === "exchanged";
+  const l = c.listingId ? Store.listing(c.listingId) : null;
+  const done = Boolean(l && l.status === "exchanged");
   const isSeller = c.ownerId === ME;
   const confirmedByMe = isSeller ? c.ownerConfirmedAt : c.participantConfirmedAt;
   const confirmedByOther = isSeller ? c.participantConfirmedAt : c.ownerConfirmedAt;
-  const replies = quickReplies(c, l);
+  const thisChatCompleted = done && Boolean(c.ownerConfirmedAt && c.participantConfirmedAt);
+  /* Why this chat is read-only, if it is */
+  const closedReason = !c.otherId ? "This person deleted their account. The chat is read-only."
+    : !c.listingId ? "This listing was removed. The chat is read-only."
+    : thisChatCompleted ? "This exchange is complete. Messaging is closed."
+    : done ? "This item was exchanged with someone else. Messaging is closed."
+    : "";
+  const replies = closedReason ? [] : quickReplies(c, l);
+  const firstName = esc(other.name.split(" ")[0]);
+  const exchangeStatus = confirmedByMe
+    ? `Waiting for ${firstName} to confirm. <button type="button" class="link-btn" id="undoBtn">Undo</button>`
+    : confirmedByOther ? `${firstName} has confirmed. Confirm to complete the exchange.`
+    : "Both of you must confirm after the hand-off.";
 
   box.innerHTML = `
     <div class="chat-head">
@@ -70,12 +83,11 @@ function renderChat() {
         <strong>${esc(other.name)}</strong>
         ${l ? `<button class="link-btn small" id="openListing">${(CATEGORIES[l.category] || CATEGORIES.other).icon} ${esc(l.title)}</button>` : `<span class="small muted">Listing removed</span>`}
       </div>
-      ${l ? (done
-        ? `<span class="cat" style="--cat:var(--ok)">✓ Exchanged</span>`
-        : `<div class="exchange-actions">
-             <button class="btn primary sm" id="doneBtn" ${confirmedByMe ? "disabled" : ""}>${confirmedByMe ? "✓ Confirmed" : "✓ Confirm exchange"}</button>
-             <span class="small muted">${confirmedByOther ? "The other participant has confirmed." : "Both participants must confirm."}</span>
-           </div>`) : ""}
+      ${thisChatCompleted ? `<span class="cat" style="--cat:var(--ok)">✓ Exchanged</span>`
+        : l && !closedReason ? `<div class="exchange-actions">
+             <button class="btn primary sm" id="doneBtn" ${confirmedByMe ? "disabled" : ""}>${confirmedByMe ? "✓ You confirmed" : "✓ Confirm exchange"}</button>
+             <span class="small muted">${exchangeStatus}</span>
+           </div>` : ""}
     </div>
     <div class="chat-body" id="chatBody">
       ${c.messages.map(m => m.from === "system"
@@ -83,21 +95,23 @@ function renderChat() {
         : `<div class="bubble ${m.from === ME ? "mine" : ""}">${esc(m.text)}<time>${fmtTime(m.ts)}</time></div>`).join("")}
       ${!c.messages.length ? `<p class="muted small" style="text-align:center">Start the conversation — ask about condition, quantity or pickup time.</p>` : ""}
     </div>
-    ${done || !replies.length ? "" : `<div class="quick-replies" aria-label="Suggested messages">${replies.map(q => `<button type="button">${esc(q)}</button>`).join("")}</div>`}
-    ${done ? `<p class="chat-ended muted small">This exchange is complete. Messaging is closed.</p>` : `
+    ${!replies.length ? "" : `<div class="quick-replies" aria-label="Suggested messages">${replies.map(q => `<button type="button">${esc(q)}</button>`).join("")}</div>`}
+    ${closedReason ? `<p class="chat-ended muted small">${closedReason}</p>` : `
       <form class="chat-input" id="chatForm">
-        <input id="msg" maxlength="1000" autocomplete="off" placeholder="Write a message…" aria-label="Message" autofocus>
+        <input id="msg" maxlength="1000" autocomplete="off" placeholder="Write a message…" aria-label="Message">
         <button class="btn primary" type="submit">Send</button>
       </form>`}`;
 
   $("#chatLayout").classList.add("in-chat");
   const body = $("#chatBody"); body.scrollTop = body.scrollHeight;
+  if (draft && $("#msg")) $("#msg").value = draft;   /* keep what you were typing */
 
   $("#chatForm")?.addEventListener("submit", e => { e.preventDefault(); send($("#msg").value); });
   $$(".quick-replies button").forEach(b => b.addEventListener("click", () => send(b.textContent)));
   $("#backBtn").addEventListener("click", () => { activeId = null; history.replaceState(null, "", "messages.html"); renderAll(); });
   $("#openListing")?.addEventListener("click", () => openListing(l.id));
   $("#doneBtn")?.addEventListener("click", () => confirmExchange(c, l, other, confirmedByMe));
+  $("#undoBtn")?.addEventListener("click", e => undoConfirmation(c, e.target));
 }
 
 async function send(text) {
@@ -120,21 +134,36 @@ function confirmExchange(c, l, other, alreadyConfirmed) {
       <div><dt>Weight</dt><dd>${esc(l.weightKg)} kg</dd></div>
       <div><dt>CO₂e avoided</dt><dd>~${co2.toFixed(1)} kg</dd></div>
     </dl>
-    <p class="muted small">Both you and ${esc(other.name)} must confirm. The listing will be marked exchanged and added to impact/history only after both confirmations.</p>
+    <p class="muted small">Both you and ${esc(other.name)} must confirm. The listing is marked exchanged and added to history and impact only after both confirmations. You can undo your confirmation until then.</p>
     <div class="form-actions">
       <button class="btn ghost" id="noBtn">Not yet</button>
       <button class="btn primary" id="yesBtn">Yes, it's done ♻️</button>
     </div>`, {
     onOpen(m) {
       $("#noBtn", m).addEventListener("click", closeModal);
-      $("#yesBtn", m).addEventListener("click", () => {
-        Store.completeExchange(c.id).then(() => {
+      $("#yesBtn", m).addEventListener("click", async e => {
+        const btn = e.currentTarget;
+        if (btn.disabled) return;
+        btn.disabled = true; btn.textContent = "Saving…";
+        try {
+          const result = await Store.completeExchange(c.id);
           closeModal(); renderAll();
-          toast(`Your confirmation was recorded. ${c.ownerConfirmedAt && c.participantConfirmedAt ? `Nice! ${l.weightKg} kg kept out of landfill 🌱` : "Waiting for the other participant."}`);
-        }).catch(err => toast(err.message || "Couldn't complete the exchange"));
+          toast(result.completed
+            ? `Exchange complete! ${l.weightKg} kg kept out of landfill 🌱`
+            : `Confirmed. Waiting for ${other.name.split(" ")[0]} to confirm.`);
+        } catch (err) {
+          toast(err.message || "Couldn't confirm the exchange");
+          btn.disabled = false; btn.textContent = "Yes, it's done ♻️";
+        }
       });
     }
   });
+}
+
+async function undoConfirmation(c, button) {
+  if (button) button.disabled = true;
+  try { await Store.withdrawConfirmation(c.id); renderAll(); toast("Your confirmation was removed."); }
+  catch (err) { toast(err.message || "Couldn't undo the confirmation"); if (button) button.disabled = false; }
 }
 
 function renderAll() {
