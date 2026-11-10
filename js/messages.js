@@ -150,7 +150,12 @@ function selectConversation(id) {
 
 function renderMessagesError(e) {
   const message = e?.detail?.message || "Messages are temporarily unavailable.";
-  $("#convoList").innerHTML = `<p class="muted small" style="padding:0 16px">${esc(message)}</p>`;
+  const list = $("#convoList");
+  if (!Store.conversations().length) {
+    list.innerHTML = `<p class="muted small message-error" style="padding:0 16px">${esc(message)}</p>`;
+  } else {
+    $("#chatLayout").insertAdjacentHTML("afterbegin", `<p class="message-error" role="alert">${esc(message)}</p>`);
+  }
 }
 
 document.addEventListener("DOMContentLoaded", () => {
