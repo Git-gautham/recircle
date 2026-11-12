@@ -187,7 +187,7 @@ function renderChrome() {
         <a href="privacy.html">Privacy</a>
       </div>
       <div class="footer-meta">
-        <p class="muted">Made by <strong>Gautham P Nair</strong> &amp; <strong>Lakshmi Nair</strong>.<br>
+        <p class="muted">Made by <strong>GAUTHAM</strong> &amp; <strong>LAKSHMI</strong>.<br>
           Contact: <a href="mailto:recircle.terracode@gmail.com">recircle.terracode@gmail.com</a></p>
         <p class="muted small">Built with open-source tools: Supabase, Leaflet, OpenStreetMap, Chart.js, Fraunces &amp; DM Sans.
           <a href="https://github.com/Git-gautham/recircle" target="_blank" rel="noopener">Source code</a></p>
